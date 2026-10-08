@@ -313,23 +313,43 @@ for (i0 = 0; i0 < ATLAS_META.length; i0++) frames[ATLAS_META[i0][0]] = [ATLAS_ME
 
 
 /* ================= SOUND (WebAudio, synthesized retro sounds - no audio files) ================= */
-var BPM = 132, STEP = 60 / BPM / 2;           // one step = an eighth note
 function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
-var LEAD = [
+/* All tracks use a 16th-note grid. Lead lines are [midiNote (0 = rest), length], placed back to back. */
+function placeNotes(lead, mult) {
+  var at = [], i, n = 0;
+  for (i = 0; i < lead.length; i++) { at[n] = [lead[i][0], lead[i][1] * mult]; n += lead[i][1] * mult; }
+  return at;
+}
+/* TITLE track: calm and cheerful, 132 BPM, C Am F G (lengths written in eighths) */
+var TITLE_LEAD = [
   [76,1],[79,1],[76,1],[72,1],[79,2],[76,2],   [69,1],[72,1],[76,1],[72,1],[81,2],[76,2],
   [77,1],[81,1],[77,1],[72,1],[77,2],[74,2],   [71,1],[74,1],[79,1],[74,1],[71,2],[67,2],
   [76,1],[79,1],[84,1],[79,1],[76,2],[72,2],   [81,1],[79,1],[76,1],[72,1],[76,2],[69,2],
   [77,1],[74,1],[72,1],[74,1],[77,2],[81,2],   [79,1],[77,1],[76,1],[74,1],[72,4]
 ];
-var ROOTS = [48, 45, 41, 43, 48, 45, 41, 43];  // C Am F G C Am F G
-var LEAD_AT = [];
-(function () { var i, n = 0; for (i = 0; i < LEAD.length; i++) { LEAD_AT[n] = LEAD[i]; n += LEAD[i][1]; } })();
-var LOOP_STEPS = 64;
+var TITLE_ROOTS = [48, 45, 41, 43, 48, 45, 41, 43];
+var TITLE_AT = placeNotes(TITLE_LEAD, 2);
+/* GAME track: fast and bouncy, 164 BPM, G major, 16 bars (lengths written in sixteenths) */
+var GAME_LEAD = [
+  [79,2],[83,2],[86,4],[83,2],[79,2],[83,4],   [81,2],[78,2],[81,2],[86,2],[81,4],[78,4],
+  [83,2],[79,2],[76,2],[79,2],[83,4],[88,4],   [84,2],[79,2],[76,2],[79,2],[84,6],[0,2],
+  [79,2],[83,2],[86,2],[88,2],[86,4],[83,2],[79,2],   [81,2],[86,2],[90,2],[86,2],[81,4],[78,4],
+  [84,2],[88,2],[84,2],[79,2],[84,4],[79,2],[76,2],   [78,2],[81,2],[86,4],[81,2],[78,2],[74,4],
+  [88,2],[86,2],[83,2],[79,2],[83,4],[88,4],   [84,2],[79,2],[84,2],[88,2],[84,4],[79,4],
+  [83,2],[86,2],[83,2],[79,2],[83,2],[86,2],[88,4],   [86,2],[81,2],[78,2],[81,2],[86,4],[0,2],[78,2],
+  [76,2],[79,2],[83,2],[88,2],[86,2],[83,2],[79,2],[76,2],   [72,2],[76,2],[79,2],[84,2],[79,2],[76,2],[72,4],
+  [74,2],[78,2],[81,2],[86,2],[81,2],[78,2],[74,2],[78,2],   [79,2],[83,2],[86,4],[83,2],[79,2],[79,4]
+];
+var GAME_AT = placeNotes(GAME_LEAD, 1);
+var GAME_CHORDS = ['G','D','Em','C','G','D','C','D','Em','C','G','D','Em','C','D','G'];
+var GAME_ROOT = { G: 43, D: 50, Em: 52, C: 48 };
+var GAME_ARP = { G: [67,71,74,71], D: [66,69,74,69], Em: [64,67,71,67], C: [64,67,72,67] };
+var GAME_BASS = [0, 12, 0, 12, 0, 12, 7, 12];
 
 function createSound(forced) {
   var AC = window.AudioContext || window.webkitAudioContext;
   var ctx = forced || null, master = null, sfxBus = null, musicBus = null;
-  var timer = null, nextT = 0, stepI = 0, musicOn = false, unlocked = false, muted = false, noiseBuf = null;
+  var timer = null, nextT = 0, stepI = 0, musicOn = false, unlocked = false, muted = false, noiseBuf = null, gestured = false, autoStarted = false, curName = null;
   try { muted = window.localStorage.getItem('capitamaeva_mute') === '1'; } catch (e) { muted = false; }
 
   function build() {
@@ -367,20 +387,49 @@ function createSound(forced) {
     src.connect(f); f.connect(g); g.connect(dest || sfxBus); src.start(t); src.stop(t + dur + 0.02);
   }
 
-  function scheduleStep(i, t) {
-    var L = LEAD_AT[i], bar = Math.floor(i / 8), s = i % 8, root = ROOTS[bar];
-    if (L) tone('square', mtof(L[0]), t, L[1] * STEP * 0.92, 0.045, musicBus);
-    if (s === 0 || s === 4) tone('triangle', mtof(root), t, STEP * 1.8, 0.15, musicBus);
-    else if (s === 2 || s === 6) tone('triangle', mtof(root + 7), t, STEP * 0.9, 0.11, musicBus);
-    if (s % 2 === 1) noise(t, 0.035, 0.02, 7000, musicBus);
+  function kick(t, vol) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.1);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    o.connect(g); g.connect(musicBus); o.start(t); o.stop(t + 0.14);
   }
+  function snare(t, vol) { noise(t, 0.09, vol, 1800, musicBus); tone('triangle', 190, t, 0.06, vol * 0.8, musicBus); }
+
+  var TRACKS = {
+    title: {
+      bpm: 132, steps: 128,
+      play: function (i, t, d) {
+        if (i % 2) return;
+        var e = i / 2, L = TITLE_AT[i], bar = Math.floor(e / 8), s = e % 8, root = TITLE_ROOTS[bar], E = 2 * d;
+        if (L && L[0]) tone('square', mtof(L[0]), t, L[1] * d * 0.92, 0.045, musicBus);
+        if (s === 0 || s === 4) tone('triangle', mtof(root), t, E * 1.8, 0.15, musicBus);
+        else if (s === 2 || s === 6) tone('triangle', mtof(root + 7), t, E * 0.9, 0.11, musicBus);
+        if (s % 2 === 1) noise(t, 0.035, 0.02, 7000, musicBus);
+      }
+    },
+    game: {
+      bpm: 164, steps: 256,
+      play: function (i, t, d) {
+        var bar = Math.floor(i / 16), s = i % 16, L = GAME_AT[i], ch = GAME_CHORDS[bar];
+        if (L && L[0]) tone('square', mtof(L[0]), t, L[1] * d * 0.9, 0.04, musicBus);
+        tone('square', mtof(GAME_ARP[ch][s % 4]), t, d * 0.8, 0.014, musicBus);
+        if (s % 2 === 0) tone('triangle', mtof(GAME_ROOT[ch] + GAME_BASS[s / 2]), t, d * 1.8, 0.12, musicBus);
+        if (s === 0 || s === 8 || s === 10) kick(t, 0.2);
+        if (s === 4 || s === 12) snare(t, 0.08);
+        if (s % 4 === 2) noise(t, 0.03, 0.02, 7000, musicBus); else if (s % 2 === 0) noise(t, 0.02, 0.01, 8000, musicBus);
+      }
+    }
+  };
+  var cur = TRACKS.game;
   function schedUntil(limit) {
-    while (nextT < limit) { scheduleStep(stepI, nextT); stepI = (stepI + 1) % LOOP_STEPS; nextT += STEP; }
+    var d = 60 / cur.bpm / 4;
+    while (nextT < limit) { cur.play(stepI, nextT, d); stepI = (stepI + 1) % cur.steps; nextT += d; }
   }
   function pump() { if (musicOn && ctx) schedUntil(ctx.currentTime + 0.4); }
 
   var api = {
     unlock: function () {
+      gestured = true;
       if (!ctx) {
         if (!AC) return;
         try { ctx = new AC(); build(); } catch (e) { ctx = null; return; }
@@ -399,8 +448,18 @@ function createSound(forced) {
     },
     suspend: function () { if (ctx && ctx.suspend && ctx.state === 'running') { try { ctx.suspend(); } catch (e) {} } },
     resume: function () { if (ctx && ctx.resume && ctx.state === 'suspended') { try { ctx.resume(); } catch (e) {} } },
-    musicStart: function (delay) {
+    tryAutoplay: function (wantMusic) {   // plays the title track on load only if the browser allows it without a gesture
+      if (ctx || !AC) return;
+      try { ctx = new AC(); build(); } catch (e) { ctx = null; return; }
+      function check() {
+        if (!autoStarted && !gestured && ctx.state === 'running' && wantMusic()) { autoStarted = true; api.musicStart('title', 0.1); }
+      }
+      ctx.onstatechange = check;
+      setTimeout(check, 150);
+    },
+    musicStart: function (name, delay) {
       if (!ctx) return;
+      cur = TRACKS[name] || TRACKS.game; curName = TRACKS[name] ? name : 'game';
       api.musicStop(true);
       musicBus = ctx.createGain(); musicBus.gain.value = 0.8; musicBus.connect(master);
       stepI = 0; nextT = ctx.currentTime + (delay || 0.05); musicOn = true;
@@ -425,7 +484,7 @@ function createSound(forced) {
     start: function () {
       if (!ctx) return; var t = ctx.currentTime + 0.005, n = [72, 76, 79, 84], i;
       for (i = 0; i < n.length; i++) tone('square', mtof(n[i]), t + i * 0.075, 0.09, 0.2, sfxBus);
-      api.musicStart(0.42);
+      api.musicStart('game', 0.42);
     },
     gameOver: function () {
       if (!ctx) return; api.musicStop(false);
@@ -433,8 +492,9 @@ function createSound(forced) {
       tone('square', mtof(67), t, 0.17, 0.2, sfxBus); tone('square', mtof(65), t + 0.18, 0.17, 0.2, sfxBus);
       tone('square', mtof(64), t + 0.36, 0.17, 0.2, sfxBus); sweep('square', mtof(60), mtof(55), t + 0.56, 0.6, 0.18);
     },
+    status: function () { return { music: musicOn ? curName : null, ctx: ctx ? ctx.state : null, gestured: gestured }; },
     _schedule: function (until) { schedUntil(until); },
-    _prime: function () { musicBus = ctx.createGain(); musicBus.gain.value = 0.8; musicBus.connect(master); stepI = 0; nextT = 0.05; },
+    _prime: function (name) { cur = TRACKS[name] || TRACKS.game; musicBus = ctx.createGain(); musicBus.gain.value = 0.8; musicBus.connect(master); stepI = 0; nextT = 0.05; },
     _ctx: function () { return ctx; }
   };
   return api;
@@ -795,6 +855,7 @@ function boot() {
   var c2 = b2.getElementsByTagName('canvas')[0].getContext('2d');
   c1.drawImage(makeButton1(), 0, 0); c2.drawImage(makeButton2(), 0, 0);
   resetGame();
+  SND.tryAutoplay(function () { return state === 'title'; });
   raf(loop);
 }
 function oneLoaded() { loaded++; if (loaded === 2) boot(); }
