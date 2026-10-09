@@ -1,0 +1,1428 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Jogo do Pulo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: uma coluna de bancada — passos em ordem, cada um um bloco de trabalho; diagrama e código rolam dentro de si */
+:root{
+  --bg:#f3f5f1; --surface:#ffffff; --fg:#1a2420; --muted:#5b6b63; --line:#d5ddd7;
+  --accent:#1f7a4d; --accent-soft:#e1f0e7; --warn:#a85d00; --warn-soft:#fbefdc;
+  --code-bg:#14201b; --code-fg:#dbe8e0;
+  --w-red:#d0342c; --w-black:#2b2b2b; --w-yellow:#d9a400; --w-blue:#2a6fd6;
+  --pcb:#16241e; --pcb-line:#3a5248; --pcb-text:#c7d6ce; --chip:#a9b1ad; --gy:#2d5ea8;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible",ui-sans-serif,system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1512; --surface:#17201c; --fg:#e4ece7; --muted:#9aaba2; --line:#2a3631;
+  --accent:#5cc58c; --accent-soft:#183427; --warn:#f0a94a; --warn-soft:#3a2a12;
+  --code-bg:#0a0f0d; --code-fg:#d6e3dc; --w-black:#9a9a9a; --pcb:#0c1411; --pcb-line:#355045; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1512; --surface:#17201c; --fg:#e4ece7; --muted:#9aaba2; --line:#2a3631;
+  --accent:#5cc58c; --accent-soft:#183427; --warn:#f0a94a; --warn-soft:#3a2a12;
+  --code-bg:#0a0f0d; --code-fg:#d6e3dc; --w-black:#9a9a9a; --pcb:#0c1411; --pcb-line:#355045; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:16px/1.6 var(--f-body)}
+.wrap{max-width:860px;margin:0 auto;padding-inline:16px;padding-block:32px 64px;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(2rem,6vw,3rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.45rem;font-weight:800;display:flex;gap:12px;align-items:baseline}
+h3{font-size:1.05rem;font-weight:600}
+p{margin:0;max-width:65ch}
+.lede{color:var(--muted);font-size:1.08rem}
+.flow{font-family:var(--f-mono);font-size:.85rem;display:flex;flex-wrap:wrap;gap:6px;align-items:center;color:var(--muted)}
+.flow b{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:var(--fg);font-weight:600}
+section{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:22px clamp(16px,4vw,28px);display:flex;flex-direction:column;gap:14px;min-width:0}
+.step{font-family:var(--f-mono);font-size:.8rem;color:var(--accent);font-weight:600;letter-spacing:.06em}
+ul,ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:6px;max-width:68ch}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+.kbd{font-family:var(--f-mono);font-size:.85em;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:6px}
+.tag{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:999px;white-space:nowrap}
+.have{background:var(--accent-soft);color:var(--accent)}
+.buy{background:var(--warn-soft);color:var(--warn)}
+.note{border-left:3px solid var(--warn);background:var(--warn-soft);padding:10px 14px;border-radius:0 6px 6px 0;font-size:.95rem}
+.note b{color:var(--warn)}
+.tip{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 6px 6px 0;font-size:.95rem}
+.diagram{overflow-x:auto;background:var(--bg);border-radius:8px;border:1px solid var(--line)}
+.diagram svg{display:block;width:100%;min-width:520px;height:auto}
+.code-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.code-head h3{font-family:var(--f-mono);font-size:.95rem}
+button.copy{font:600 .85rem var(--f-body);background:var(--accent);color:var(--surface);border:0;border-radius:6px;padding:7px 14px;cursor:pointer}
+button.copy:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+pre{margin:0;background:var(--code-bg);color:var(--code-fg);font:12.5px/1.55 var(--f-mono);padding:14px;border-radius:8px;overflow:auto;max-height:420px}
+.big-url{font-family:var(--f-mono);font-size:clamp(1.3rem,5vw,1.9rem);font-weight:600;color:var(--accent)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.grid2>div{min-width:0;display:flex;flex-direction:column;gap:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.kt{border:2px dashed var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;background:var(--bg);cursor:pointer;outline:none}
+.kt.on,.kt:focus-visible{border-style:solid;border-color:var(--accent)}
+.kt-hint{font-weight:700;color:var(--muted)}
+.kt.on .kt-hint{color:var(--accent)}
+.kt-keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kt-key{border:1px solid var(--line);border-radius:8px;padding:14px;background:var(--surface);display:flex;flex-direction:column;gap:6px;align-items:center;transition:background .08s,border-color .08s}
+.kt-cap{font:800 1.6rem var(--f-display)}
+.kt-meta{font:500 .8rem var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.kt-key.down{background:var(--accent);border-color:var(--accent)}
+.kt-key.down .kt-cap,.kt-key.down .kt-meta{color:var(--surface)}
+.kt-log{margin:0;padding-left:1.4em;font:.8rem/1.5 var(--f-mono);color:var(--muted);min-height:4.5em;display:block}
+@media (prefers-reduced-motion:reduce){.kt-key{transition:none}}
+</style>
+</head><body>
+
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:12px">
+  <h1>Jogo do Pulo</h1>
+  <p class="lede">Controle Bluetooth feito com ESP32 + MPU6050. A criança segura o controle: pular aperta <span class="kbd">Espaço</span> logo que ela sai do chão, agachar segura <span class="kbd">↓</span> e levantar solta. O jogo continua no GitHub Pages, sem mudança.</p>
+  <div class="flow"><b>MPU6050</b>→ giroscópio + acelerômetro →<b>ESP32</b>→ Bluetooth (teclado) →<b>TV / Mac</b>→<b>seu jogo</b></div>
+</header>
+
+<section>
+  <div class="step">VERSÃO 3.1</div>
+  <h2>O que mudou</h2>
+  <ul>
+    <li><b>v3.1: cada tecla aparece no log</b> com o resultado do envio que a própria biblioteca Bluetooth informa: <code>[enviada]</code> ou o motivo de não ter ido. O log também avisa o estado do teclado (desconectado, esperando ativar, ativo). Há ainda o comando <code>teclas</code>, um testador nesta página e o LED de status (passo 6b).</li>
+    <li><b>Usa o giroscópio.</b> Antes só o acelerômetro era usado, e inclinar o controle ao agachar virava movimento falso. Agora um filtro Mahony sabe onde é "para cima" a cada 5 ms.</li>
+    <li><b>Corrige o erro de fábrica do sensor</b> com o comando <code>sensor</code>, feito uma vez só. O datasheet do MPU6050 admite até ±50 mg nos eixos X/Y e ±80 mg no Z. Quando o controle gira, esse erro vira "velocidade fantasma".</li>
+    <li><b>Pulo na decolagem:</b> o Espaço sai cerca de 35 ms depois que a criança sai do chão, sem esperar o pouso.</li>
+    <li><b>Agachar por profundidade:</b> a seta aperta depois de alguns cm de descida e solta assim que começa a subir. O mergulho antes do pulo é ignorado.</li>
+    <li><b>Sacudir para os lados não conta</b>, e parado ele se recalibra sozinho.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="step">ANTES DE LIGAR O SENSOR</div>
+  <h2>Teste a TV primeiro, só com a placa</h2>
+  <p>O botão <b>BOOT</b> da placa funciona como <span class="kbd">Espaço</span>. Grave o código (passos 3 e 4), pareie (passo 6), abra o jogo no navegador da TV e aperte BOOT. Se o personagem pular, a TV aceita o controle. O comando <code>teclas</code> (passo 6b) testa também a seta para baixo.</p>
+  <p class="note"><b>Não confirmado:</b> a Samsung diz que a maioria das TVs tem Bluetooth, mas pede para conferir nas especificações o suporte a teclado (BT HID). Não encontrei esse dado oficial para o QN55Q6FNA, nem confirmação de suporte a teclado Bluetooth Low Energy. O teste com o BOOT responde as duas coisas.</p>
+</section>
+
+<section>
+  <div class="step">PASSO 1</div>
+  <h2>Componentes</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Item</th><th>Busca no site</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>Placa ESP32 DevKit 30 pinos (CP2102, USB‑C)</td><td>—</td><td><span class="tag have">Você tem</span></td></tr>
+      <tr><td>Acelerômetro/giroscópio GY‑521 MPU6050 (I²C)</td><td>—</td><td><span class="tag have">Você tem</span></td></tr>
+      <tr><td>4 jumpers fêmea‑fêmea</td><td>—</td><td><span class="tag have">Você tem</span></td></tr>
+      <tr><td>Cabo USB‑C de <b>dados</b>, para gravar o código</td><td><code>cabo USB-C dados</code></td><td><span class="tag buy">Comprar</span></td></tr>
+      <tr><td>Power bank pequeno e leve, para alimentar o controle</td><td><code>power bank mini 5000mAh</code></td><td><span class="tag buy">Comprar</span></td></tr>
+      <tr><td>Case firme onde caibam placa, sensor e power bank, fácil de segurar com as duas mãos</td><td><code>case rigida pequena</code></td><td><span class="tag buy">Comprar</span></td></tr>
+    </tbody>
+  </table></div>
+  <p>O USB não liga na TV. Ele serve para gravar o código e para receber energia do power bank; a comunicação com a TV é por Bluetooth.</p>
+  <p class="note"><b>Não confirmado:</b> alguns power banks desligam sozinhos quando o consumo é baixo. O consumo do ESP32 com Bluetooth varia, então teste o seu.</p>
+</section>
+
+<section>
+  <div class="step">PASSO 2</div>
+  <h2>Ligação — 4 fios</h2>
+  <p>Ligue direto, pino a pino, com os jumpers fêmea‑fêmea, com o USB <b>desconectado</b>.</p>
+  <div class="diagram">
+  <svg viewBox="0 0 640 470" role="img" aria-label="ESP32: 3V3 ao VCC, GND ao GND, D22 ao SCL, D21 ao SDA do GY-521">
+    <style>
+      .lbl{font:11px var(--f-mono);fill:var(--pcb-text)}
+      .lbl.on{fill:#ffffff;font-weight:700}
+      .ttl{font:700 13px var(--f-body);fill:var(--fg)}
+      .gyl{font:11px var(--f-mono);fill:#e8eefb}
+      .gyl.on{font-weight:700;fill:#ffffff}
+      .w{fill:none;stroke-width:4;stroke-linejoin:round;stroke-linecap:round}
+    </style>
+    <text x="130" y="16" text-anchor="middle" class="ttl">ESP32 (lado direito da placa)</text>
+    <rect x="40" y="26" width="180" height="420" rx="10" fill="var(--pcb)" stroke="var(--pcb-line)"/>
+    <rect x="70" y="40" width="100" height="70" rx="4" fill="var(--chip)"/>
+    <text x="120" y="80" text-anchor="middle" style="font:700 12px var(--f-body);fill:#333">ESP‑32</text>
+    <rect x="100" y="420" width="40" height="22" rx="4" fill="var(--chip)"/>
+    <text x="120" y="436" text-anchor="middle" style="font:9px var(--f-mono);fill:#333">USB‑C</text>
+    <g id="pins"></g>
+    <text x="520" y="76" text-anchor="middle" class="ttl">GY‑521</text>
+    <rect x="440" y="90" width="150" height="230" rx="8" fill="var(--gy)"/>
+    <rect x="490" y="180" width="44" height="44" rx="3" fill="#1b1b1b"/>
+    <text x="512" y="240" text-anchor="middle" style="font:9px var(--f-mono);fill:#cfdaf2">MPU6050</text>
+    <g id="gypins"></g>
+    <path class="w" stroke="var(--w-yellow)" d="M205 76 H300 V240 H440"/>
+    <path class="w" stroke="var(--w-blue)" d="M205 154 H320 V214 H440"/>
+    <path class="w" stroke="var(--w-black)" d="M205 388 H360 V266 H440"/>
+    <path class="w" stroke="var(--w-red)" d="M205 414 H380 V292 H440"/>
+    <text x="440" y="350" style="font:11px var(--f-body);fill:var(--muted)">A posição do módulo não importa:</text>
+    <text x="440" y="366" style="font:11px var(--f-body);fill:var(--muted)">siga os nomes impressos nos pinos.</text>
+  </svg>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Fio</th><th>ESP32</th><th>GY‑521</th><th>Função</th></tr></thead>
+    <tbody>
+      <tr><td><span class="dot" style="background:var(--w-red)"></span>vermelho</td><td class="mono">3V3</td><td class="mono">VCC</td><td>alimentação 3,3 V</td></tr>
+      <tr><td><span class="dot" style="background:var(--w-black)"></span>preto</td><td class="mono">GND</td><td class="mono">GND</td><td>terra (use o GND do lado direito, junto do 3V3)</td></tr>
+      <tr><td><span class="dot" style="background:var(--w-yellow)"></span>amarelo</td><td class="mono">D22</td><td class="mono">SCL</td><td>clock I²C</td></tr>
+      <tr><td><span class="dot" style="background:var(--w-blue)"></span>azul</td><td class="mono">D21</td><td class="mono">SDA</td><td>dados I²C</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tip"><b>Importante:</b> prenda o GY‑521 <b>firme</b> no case, com fita dupla face grossa ou cola quente, sem folga. Um sensor que balança dentro do case mede o próprio chacoalho, e isso nenhum código corrige. Depois de calibrar (passo 5), não mude o sensor de lugar.</p>
+  <p class="note"><b>Não confirmado:</b> o GY‑521 é genérico e não tem documentação oficial. Alimentar pelo 3V3 é o uso comum da comunidade.</p>
+</section>
+
+<section>
+  <div class="step">PASSO 3</div>
+  <h2>Preparar a Arduino IDE</h2>
+  <ol>
+    <li>Arduino IDE → <b>Settings</b> → <i>Additional boards manager URLs</i>:<br><code>https://espressif.github.io/arduino-esp32/package_esp32_index.json</code></li>
+    <li><b>Boards Manager</b> → <code>esp32</code> → <b>“esp32 by Espressif Systems”</b>, versão <b>3.3.8 ou mais nova</b>. A parte de Bluetooth se baseia no exemplo oficial <code>Server_Gamepad</code>, que existe a partir dessa versão.</li>
+    <li><b>Tools → Board → esp32 → ESP32 Dev Module</b> e, em <b>Tools → Port</b>, a porta da placa (no Mac, <code>/dev/cu.usbserial-…</code>).</li>
+  </ol>
+</section>
+
+<section>
+  <div class="step">PASSO 4</div>
+  <h2>Código</h2>
+  <p>Substitua todo o conteúdo do sketch <code>controle_pulo</code> pelo código abaixo. É um arquivo só e usa apenas bibliotecas do pacote oficial da Espressif.</p>
+  <div class="code-head"><h3>controle_pulo.ino (v3)</h3><button class="copy" type="button" data-target="c1">Copiar</button></div>
+  <pre id="c1">// =====================================================================
+//  Controle do Pulo v3.1 — ESP32 + MPU6050 (GY-521) como teclado Bluetooth
+//
+//  Pular   -&gt; ESPAÇO, apertado logo que a criança sai do chão
+//  Agachar -&gt; segura SETA PARA BAIXO; solta assim que ela começa a subir
+//  BOOT    -&gt; ESPAÇO (teste de pareamento sem o sensor)
+//
+//  Como funciona:
+//   1. Giroscópio + acelerômetro (filtro Mahony) dizem a cada 5 ms onde é
+//      &quot;para cima&quot;, mesmo com o controle inclinado ou girando.
+//   2. Só o movimento VERTICAL conta: balançar para os lados é ignorado.
+//   3. PULO    = impulso para cima + corpo &quot;sem peso&quot; (no ar) por ar_ms.
+//   4. AGACHAR = já desceu desce_cm e ainda descendo a desce_vel.
+//      Se no fim da descida não chegou a agacha_cm, solta (era só um mergulho).
+//   5. LEVANTAR = subindo a sobe_vel, ou já subiu metade do que agachou.
+//   6. Parado, ele se recalibra sozinho. O comando &quot;sensor&quot; (uma vez só)
+//      corrige o erro de fábrica de cada eixo do acelerômetro.
+//
+//  Serial Monitor (115200, final de linha &quot;New Line&quot;):
+//    ajuda | teclas | sensor | cal | ver | desfazer | padrao | log 0/1/2
+//    &lt;parametro&gt; &lt;valor&gt;      ex.:  desce_vel 0.15
+//
+//  Só usa bibliotecas do core oficial da Espressif (arduino-esp32 3.3.8+).
+// =====================================================================
+#include &lt;Arduino.h&gt;
+#include &lt;Wire.h&gt;
+#include &lt;Preferences.h&gt;
+#include &lt;BLEDevice.h&gt;
+#include &lt;BLEUtils.h&gt;
+#include &lt;BLEServer.h&gt;
+#include &lt;BLEHIDDevice.h&gt;
+#include &lt;BLESecurity.h&gt;
+#include &lt;BLE2902.h&gt;
+
+const char* BT_NAME = &quot;Controle Pulo&quot;;
+const int PIN_SDA = 21, PIN_SCL = 22, PIN_BOOT = 0, PIN_LED = 2;
+
+// Saídas usadas pelo algoritmo (implementadas mais abaixo)
+void keySpace(bool on);
+void keyDown(bool on);
+void saveParams();
+void saveSensorCal();
+
+// ======================= [ALGORITMO] =======================
+
+// ---------------- Parâmetros ----------------
+struct Param { const char* nome; float padrao; float lo; float hi; const char* ajuda; float val; };
+Param prm[] = {
+  {&quot;desce_vel&quot;,    0.18f, 0.08f, 1.50f,   &quot;m/s para baixo para apertar a seta&quot;, 0},
+  {&quot;desce_cm&quot;,     6.0f,  2.0f,  25.0f,   &quot;cm ja descidos para apertar a seta&quot;, 0},
+  {&quot;agacha_cm&quot;,    9.0f,  3.0f,  40.0f,   &quot;descida minima para MANTER a seta (menos = mergulho, solta)&quot;, 0},
+  {&quot;sobe_vel&quot;,     0.25f, 0.08f, 1.50f,   &quot;m/s para cima para soltar a seta&quot;, 0},
+  {&quot;pulo_vel&quot;,     0.50f, 0.20f, 2.00f,   &quot;m/s para cima no impulso do pulo&quot;, 0},
+  {&quot;ar_g&quot;,         0.35f, 0.15f, 0.80f,   &quot;forca vertical abaixo disso = no ar (g)&quot;, 0},
+  {&quot;ar_ms&quot;,        30.0f, 10.0f, 150.0f,  &quot;ms no ar para confirmar o pulo&quot;, 0},
+  {&quot;espaco_ms&quot;,    120.0f, 40.0f, 400.0f, &quot;ms que o Espaco fica apertado&quot;, 0},
+  {&quot;pouso_ms&quot;,     350.0f, 0.0f, 1500.0f, &quot;ms ignorando agachar depois de pousar&quot;, 0},
+  {&quot;max_baixo_ms&quot;, 5000.0f, 500.0f, 30000.0f, &quot;seguranca: solta a seta depois disso (ms)&quot;, 0},
+};
+enum { DESCE_VEL, DESCE_CM, AGACHA_CM, SOBE_VEL, PULO_VEL, AR_G, AR_MS, ESPACO_MS, POUSO_MS, MAX_BAIXO_MS, NP };
+static_assert(sizeof(prm) / sizeof(prm[0]) == NP, &quot;parametros fora de sincronia&quot;);
+#define P(i)   (prm[i].val)
+#define PMS(i) ((unsigned long)prm[i].val)
+
+void setParam(int i, float v) { v = fabsf(v); prm[i].val = constrain(v, prm[i].lo, prm[i].hi); }
+void defaultParams() { for (int i = 0; i &lt; NP; i++) prm[i].val = prm[i].padrao; }
+void printParams() {
+  Serial.println(&quot;\n--- Parametros (mude com: &lt;nome&gt; &lt;valor&gt;) ---&quot;);
+  for (int i = 0; i &lt; NP; i++)
+    Serial.printf(&quot;  %-13s %7.2f   (padrao %6.2f)  %s\n&quot;, prm[i].nome, prm[i].val, prm[i].padrao, prm[i].ajuda);
+}
+
+int logMode = 1;   // 0 silencio | 1 eventos | 2 grafico (Serial Plotter)
+#define LOG(...) do { if (logMode == 1) { Serial.printf(&quot;[%7.2fs] &quot;, millis() / 1000.0f); Serial.printf(__VA_ARGS__); } } while (0)
+
+// ---------------- Estado ----------------
+const float GRAV = 9.81f, DEG2RAD = 0.01745329f;
+const float KP_NORMAL = 0.8f, KP_FAST = 8.0f;  // ganho do filtro (correcao pelo acelerometro)
+float VEL_TAU = 4.0f;                          // s, vazamento suave da velocidade (contra deriva)
+const int   STILL_N = 30;                      // 30 amostras = 150 ms parado
+
+enum { JP_GROUND, JP_AIR, JP_LANDED };
+enum { CR_UP, CR_DOWN };
+enum { CAL_OFF, CAL_STILL, CAL_SQUAT, CAL_JUMP, CAL_END };
+int jpState = JP_GROUND, crState = CR_UP, calPhase = CAL_OFF;
+
+float accOff[3] = {0, 0, 0}, accScl[3] = {1, 1, 1};   // calibracao de fabrica do acelerometro
+bool  accCalOk = false;
+float q0 = 1, q1 = 0, q2 = 0, q3 = 0;   // orientacao (sensor -&gt; mundo)
+float gBias[3] = {0, 0, 0};             // giroscopio parado (graus/s)
+float g0 = 1.0f;                        // quanto o acelerometro mede parado (g)
+float fv = 1.0f;                        // forca vertical / g0: 1 parado, 0 no ar
+float vel = 0, pos = 0;                 // velocidade (m/s) e altura (m) verticais
+float pTop = 0, pBottom = 0;            // onde a descida/subida atual comecou
+bool  still = false;
+int   stillCnt = 0, quietCnt = 0;
+float lastDev = 0, lastGyro = 0;
+float agit = 0;                         // agitacao lateral (g): sacudir para os lados nao conta
+const float AGIT_MAX = 0.6f;            // acima disso nao aperta nada
+unsigned long fastUntil = 0;
+
+// ---------------- Orientacao e movimento vertical ----------------
+void sensorSetFromStill(float ax, float ay, float az, float gx, float gy, float gz, unsigned long now) {
+  // ax..az ja calibrados; gx..gz crus
+  gBias[0] = gx; gBias[1] = gy; gBias[2] = gz;
+  float n = sqrtf(ax * ax + ay * ay + az * az);
+  g0 = (n &gt; 0.5f &amp;&amp; n &lt; 1.5f) ? n : 1.0f;
+  float roll = atan2f(ay, az), pitch = atan2f(-ax, sqrtf(ay * ay + az * az));
+  float cr = cosf(roll / 2), sr = sinf(roll / 2), cp = cosf(pitch / 2), sp = sinf(pitch / 2);
+  q0 = cr * cp; q1 = sr * cp; q2 = cr * sp; q3 = -sr * sp;
+  vel = pos = pTop = pBottom = 0;
+  fastUntil = now + 1000;
+}
+
+void imuStep(float ax, float ay, float az, float gx, float gy, float gz, float dt, unsigned long now) {
+  float dgx = gx - gBias[0], dgy = gy - gBias[1], dgz = gz - gBias[2];
+  float wx = dgx * DEG2RAD, wy = dgy * DEG2RAD, wz = dgz * DEG2RAD;
+  float an = sqrtf(ax * ax + ay * ay + az * az);
+  float dev = fabsf(an / g0 - 1.0f);
+  float gm = sqrtf(dgx * dgx + dgy * dgy + dgz * dgz);
+
+  // O acelerometro so corrige a orientacao depois de 50 ms medindo ~1 g
+  // (durante movimento ele &quot;mente&quot;: mede gravidade + aceleracao)
+  quietCnt = (dev &lt; 0.06f &amp;&amp; gm &lt; 60.0f) ? quietCnt + 1 : 0;
+  float trust = quietCnt &lt; 10 ? 0.0f : (dev &lt; 0.03f ? 1.0f : (0.06f - dev) / 0.03f);
+  float kp = (now &lt; fastUntil ? KP_FAST : KP_NORMAL) * trust;
+  if (kp &gt; 0 &amp;&amp; an &gt; 0.2f) {
+    float vx = 2 * (q1 * q3 - q0 * q2), vy = 2 * (q0 * q1 + q2 * q3), vz = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
+    float nx = ax / an, ny = ay / an, nz = az / an;
+    wx += kp * (ny * vz - nz * vy);
+    wy += kp * (nz * vx - nx * vz);
+    wz += kp * (nx * vy - ny * vx);
+  }
+  float hx = 0.5f * dt * wx, hy = 0.5f * dt * wy, hz = 0.5f * dt * wz;
+  float a0 = q0, a1 = q1, a2 = q2;
+  q0 += -a1 * hx - a2 * hy - q3 * hz;
+  q1 +=  a0 * hx + a2 * hz - q3 * hy;
+  q2 +=  a0 * hy - a1 * hz + q3 * hx;
+  q3 +=  a0 * hz + a1 * hy - a2 * hx;
+  float qn = 1.0f / sqrtf(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
+  q0 *= qn; q1 *= qn; q2 *= qn; q3 *= qn;
+
+  // &quot;Para cima&quot; no referencial do sensor -&gt; forca vertical
+  float ux = 2 * (q1 * q3 - q0 * q2), uy = 2 * (q0 * q1 + q2 * q3), uz = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
+  fv = (ax * ux + ay * uy + az * uz) / g0;
+  float h2 = an * an / (g0 * g0) - fv * fv;                 // forca horizontal^2
+  agit = fmaxf(h2 &gt; 0 ? sqrtf(h2) : 0, agit * 0.985f);      // pico que decai em ~0,3 s
+
+  // Parado? Zera a velocidade e recalibra sozinho (devagar)
+  lastDev = dev; lastGyro = gm;
+  stillCnt = (dev &lt; 0.04f &amp;&amp; gm &lt; 6.0f) ? stillCnt + 1 : 0;
+  still = stillCnt &gt;= STILL_N;
+  if (still) {
+    g0 += 0.005f * (an - g0);
+    gBias[0] += 0.005f * dgx; gBias[1] += 0.005f * dgy; gBias[2] += 0.005f * dgz;
+  }
+
+  float aLin = constrain(fv - 1.0f, -3.0f, 3.0f) * GRAV;   // m/s2, + = para cima
+  vel += aLin * dt;
+  if (jpState == JP_GROUND) {
+    vel -= vel * dt / VEL_TAU;
+    if (still &amp;&amp; fabsf(vel) &lt; 0.25f) vel *= 0.85f;
+  }
+  pos += vel * dt;
+}
+
+void resetMotion() {
+  vel = 0; pos = 0; pTop = 0; pBottom = 0;
+}
+
+// ---------------- Calibracao: registro (usado pelos detectores) ----------------
+const int MAXR = 16;
+struct Rec { float a, b, c, t; };   // valores + horario (ms)
+Rec recDesc[CAL_END][MAXR], recRise[CAL_END][MAXR], recFly[CAL_END][MAXR];
+int nDesc[CAL_END], nRise[CAL_END], nFly[CAL_END];
+bool calRec = false;
+
+void addRec(Rec (&amp;arr)[CAL_END][MAXR], int (&amp;n)[CAL_END], float a, float b, float c, unsigned long t) {
+  if (calRec &amp;&amp; n[calPhase] &lt; MAXR) { arr[calPhase][n[calPhase]] = {a, b, c, (float)t}; n[calPhase]++; }
+}
+
+// ---------------- Pulo ----------------
+float vPeak = 0; unsigned long vPeakAt = 0;
+unsigned long lowSince = 0, takeoffAt = 0, landedAt = 0, lastJump = 0, spaceSince = 0, riseGuardUntil = 0;
+bool spaceByJump = false;
+// episodio &quot;leve&quot; (forca vertical &lt; 0.7 g), para log e calibracao
+bool flEp = false, flFired = false; unsigned long flStart = 0; float flMin = 9, flTake = 0, flBest = 0;
+
+void onFlightEnd(unsigned long now) {
+  float dur = (float)(now - flStart);
+  addRec(recFly, nFly, dur, flMin, flTake, flStart);
+  if (flFired) {
+    float t = dur / 1000.0f;
+    LOG(&quot;  pousou   | %.0f ms no ar (~%.0f cm)\n&quot;, dur, GRAV * t * t / 8.0f * 100.0f);
+  } else if (calPhase == CAL_OFF &amp;&amp; (dur &gt;= 60 || flTake &gt;= 0.8f * P(PULO_VEL))) {
+    LOG(&quot;  quase-pulo | impulso %.2f m/s (pulo_vel %.2f) | forca min %.2f g (ar_g %.2f) | %.0f ms abaixo de ar_g (ar_ms %.0f)\n&quot;,
+        flTake, P(PULO_VEL), flMin, P(AR_G), flBest, P(AR_MS));
+  }
+}
+
+void jumpStep(unsigned long now) {
+  // maior velocidade para cima nos ultimos 300 ms = impulso
+  if (vel &gt; vPeak || now - vPeakAt &gt; 300) { vPeak = vel; vPeakAt = now; }
+
+  if (fv &lt; 0.70f) {
+    if (!flEp) { flEp = true; flFired = false; flStart = now; flMin = fv; flTake = vPeak; flBest = 0; lowSince = 0; }
+    flMin = fminf(flMin, fv);
+    if (fv &lt; P(AR_G)) { if (!lowSince) lowSince = now; flBest = fmaxf(flBest, (float)(now - lowSince)); }
+    else lowSince = 0;
+  } else if (flEp &amp;&amp; (jpState != JP_AIR || now - takeoffAt &gt; 60)) {
+    flEp = false; onFlightEnd(now);
+  }
+
+  if (jpState == JP_GROUND) {
+    // logo depois de levantar de uma agachada, exige mais tempo no ar
+    // (levantar rapido tambem deixa o corpo &quot;leve&quot; por um instante)
+    unsigned long need = PMS(AR_MS) * (now &lt; riseGuardUntil ? 2 : 1);
+    if (flEp &amp;&amp; !flFired &amp;&amp; lowSince &amp;&amp; now - lowSince &gt;= need &amp;&amp;
+        flTake &gt;= P(PULO_VEL) &amp;&amp; now - lastJump &gt;= 250 &amp;&amp; agit &lt; 2.5f * AGIT_MAX) {
+      flFired = true;
+      jpState = JP_AIR; takeoffAt = lowSince; lastJump = now;
+      LOG(&quot;PULO       | impulso %.2f m/s | %lu ms apos sair do chao\n&quot;, flTake, now - lowSince);
+      if (crState == CR_DOWN) { crState = CR_UP; keyDown(false); }
+      keySpace(true); spaceByJump = true; spaceSince = now;
+    }
+  } else if (jpState == JP_AIR) {
+    if ((fv &gt; 0.9f &amp;&amp; now - takeoffAt &gt; 60) || now - takeoffAt &gt; 800) { jpState = JP_LANDED; landedAt = now; }
+  } else if (jpState == JP_LANDED) {
+    if (now - landedAt &gt;= PMS(POUSO_MS)) { jpState = JP_GROUND; resetMotion(); }
+  }
+
+  if (spaceByJump &amp;&amp; now - spaceSince &gt;= PMS(ESPACO_MS)) { keySpace(false); spaceByJump = false; }
+}
+
+// ---------------- Agachar ----------------
+int crCnt = 0; unsigned long crSince = 0; bool crDescentDone = false; float crMaxDepth = 0;
+bool dEp = false, dEpPressed = false; float dEpMinV = 0, dEpDepth = 0;
+bool uEp = false; float uEpMaxV = 0, uEpH = 0;
+
+void releaseDown(const char* why, unsigned long now) {
+  LOG(&quot;SOBE       | %s\n&quot;, why);
+  crState = CR_UP; crCnt = 0; keyDown(false);
+  if (now - crSince &gt;= 300) riseGuardUntil = now + 500;   // so depois de agachada de verdade
+}
+
+void crouchStep(unsigned long now) {
+  if (jpState != JP_GROUND) { dEp = uEp = false; crCnt = 0; return; }   // no ar / pousando
+
+  if (vel &gt;= -0.02f) pTop = pos;
+  if (vel &lt;= 0.02f) pBottom = pos;
+  float depth = pTop - pos;     // m descidos nesta descida
+  float rise = pos - pBottom;   // m subidos nesta subida
+
+  // episodios (para log e calibracao)
+  if (!dEp &amp;&amp; vel &lt; -0.06f) { dEp = true; dEpMinV = vel; dEpDepth = 0; dEpPressed = (crState == CR_DOWN); }
+  if (dEp) {
+    dEpMinV = fminf(dEpMinV, vel); dEpDepth = fmaxf(dEpDepth, depth);
+    if (vel &gt;= -0.02f) {
+      dEp = false;
+      addRec(recDesc, nDesc, -dEpMinV, dEpDepth, 0, now);
+      if (!dEpPressed &amp;&amp; calPhase == CAL_OFF &amp;&amp; dEpDepth * 100 &gt;= P(AGACHA_CM))
+        LOG(&quot;  quase-baixo | desceu %.0f cm, mas so a %.2f m/s (desce_vel %.2f)\n&quot;, dEpDepth * 100, -dEpMinV, P(DESCE_VEL));
+    }
+  }
+  if (!uEp &amp;&amp; vel &gt; 0.06f) { uEp = true; uEpMaxV = vel; uEpH = 0; }
+  if (uEp) {
+    uEpMaxV = fmaxf(uEpMaxV, vel); uEpH = fmaxf(uEpH, rise);
+    if (vel &lt;= 0.02f) { uEp = false; addRec(recRise, nRise, uEpMaxV, uEpH, 0, now); }
+  }
+
+  if (crState == CR_UP) {
+    if (vel &lt; -P(DESCE_VEL) &amp;&amp; depth * 100 &gt;= P(DESCE_CM) &amp;&amp; agit &lt; AGIT_MAX) {
+      if (++crCnt &gt;= 3) {                       // 15 ms de confirmacao
+        crState = CR_DOWN; crCnt = 0; crSince = now; crDescentDone = false; crMaxDepth = depth;
+        dEpPressed = true;
+        LOG(&quot;BAIXO      | descendo %.2f m/s, ja %.0f cm\n&quot;, -vel, depth * 100);
+        keyDown(true);
+      }
+    } else crCnt = 0;
+    return;
+  }
+
+  // CR_DOWN
+  if (!crDescentDone) {
+    crMaxDepth = fmaxf(crMaxDepth, depth);
+    if (vel &gt;= -0.03f) {
+      crDescentDone = true;
+      if (crMaxDepth * 100 &lt; P(AGACHA_CM)) {
+        LOG(&quot;  mergulho | so desceu %.0f cm (agacha_cm %.0f): solta a seta\n&quot;, crMaxDepth * 100, P(AGACHA_CM));
+        crState = CR_UP; crCnt = 0; keyDown(false);
+        return;
+      }
+      LOG(&quot;  agachado | desceu %.0f cm (seta continua apertada)\n&quot;, crMaxDepth * 100);
+    }
+  }
+  if (vel &gt; P(SOBE_VEL) &amp;&amp; agit &lt; AGIT_MAX) {
+    if (++crCnt &gt;= 3) { char b[48]; snprintf(b, sizeof(b), &quot;subindo %.2f m/s&quot;, vel); releaseDown(b, now); return; }
+  } else crCnt = 0;
+  if (crDescentDone &amp;&amp; rise &gt;= fmaxf(0.08f, 0.5f * crMaxDepth) &amp;&amp; agit &lt; AGIT_MAX) {
+    char b[48]; snprintf(b, sizeof(b), &quot;ja subiu %.0f cm&quot;, rise * 100); releaseDown(b, now); return;
+  }
+  if (now - crSince &gt; PMS(MAX_BAIXO_MS)) releaseDown(&quot;tempo maximo&quot;, now);
+}
+
+// ---------------- Calibracao do sensor (uma vez): 6 posicoes paradas ----------------
+const int SC_NEED = 6;
+bool scActive = false, scWaitMove = false, scRefOk = false;
+int scCount = 0, scN = 0;
+float scVec[SC_NEED][3], scRef[6];
+double scSum[3];
+unsigned long scStart = 0;
+
+bool solveLinear(double* A, double* b, int n) {   // eliminacao de Gauss com pivoteamento
+  for (int c = 0; c &lt; n; c++) {
+    int p = c;
+    for (int r = c + 1; r &lt; n; r++) if (fabs(A[r * n + c]) &gt; fabs(A[p * n + c])) p = r;
+    if (fabs(A[p * n + c]) &lt; 1e-12) return false;
+    if (p != c) { for (int k = 0; k &lt; n; k++) { double t = A[c * n + k]; A[c * n + k] = A[p * n + k]; A[p * n + k] = t; } double t = b[c]; b[c] = b[p]; b[p] = t; }
+    for (int r = 0; r &lt; n; r++) {
+      if (r == c) continue;
+      double f = A[r * n + c] / A[c * n + c];
+      for (int k = c; k &lt; n; k++) A[r * n + k] -= f * A[c * n + k];
+      b[r] -= f * b[c];
+    }
+  }
+  for (int c = 0; c &lt; n; c++) b[c] /= A[c * n + c];
+  return true;
+}
+
+// Elipsoide alinhado aos eixos: offset e escala por eixo
+bool fitEllipsoid(float v[][3], int n, float* off, float* scl) {
+  double A[36] = {0}, b[6] = {0};
+  for (int i = 0; i &lt; n; i++) {
+    double x = v[i][0], y = v[i][1], z = v[i][2];
+    double r[6] = {x * x, y * y, z * z, x, y, z};
+    for (int j = 0; j &lt; 6; j++) { b[j] += r[j]; for (int k = 0; k &lt; 6; k++) A[j * 6 + k] += r[j] * r[k]; }
+  }
+  if (!solveLinear(A, b, 6)) return false;
+  if (b[0] &lt;= 0 || b[1] &lt;= 0 || b[2] &lt;= 0) return false;
+  double o[3], K = 1;
+  for (int i = 0; i &lt; 3; i++) { o[i] = -b[3 + i] / (2 * b[i]); K += b[i] * o[i] * o[i]; }
+  for (int i = 0; i &lt; 3; i++) {
+    off[i] = (float)o[i];
+    scl[i] = (float)sqrt(K / b[i]);
+    if (fabsf(off[i]) &gt; 0.3f || scl[i] &lt; 0.8f || scl[i] &gt; 1.2f) return false;
+  }
+  return true;
+}
+
+// Esfera: so offset (precisa de menos variedade de posicoes)
+bool fitSphere(float v[][3], int n, float* off, float* scl) {
+  double A[16] = {0}, b[4] = {0};
+  for (int i = 0; i &lt; n; i++) {
+    double x = v[i][0], y = v[i][1], z = v[i][2];
+    double r[4] = {2 * x, 2 * y, 2 * z, 1}, t = x * x + y * y + z * z;
+    for (int j = 0; j &lt; 4; j++) { b[j] += r[j] * t; for (int k = 0; k &lt; 4; k++) A[j * 4 + k] += r[j] * r[k]; }
+  }
+  if (!solveLinear(A, b, 4)) return false;
+  double rad2 = b[3] + b[0] * b[0] + b[1] * b[1] + b[2] * b[2];
+  if (rad2 &lt;= 0) return false;
+  float rad = (float)sqrt(rad2);
+  for (int i = 0; i &lt; 3; i++) {
+    off[i] = (float)b[i]; scl[i] = rad;
+    if (fabsf(off[i]) &gt; 0.3f || rad &lt; 0.8f || rad &gt; 1.2f) return false;
+  }
+  return true;
+}
+
+void sensorCalStart(unsigned long now) {
+  if (spaceByJump) { keySpace(false); spaceByJump = false; }
+  if (crState == CR_DOWN) { crState = CR_UP; keyDown(false); }
+  scActive = true; scWaitMove = false; scRefOk = false; scCount = 0; scN = 0; scStart = now;
+  Serial.println(&quot;\n######## CALIBRACAO DO SENSOR (so precisa fazer uma vez) ########&quot;);
+  Serial.println(&quot;Deixe o controle PARADO em 6 posicoes diferentes, como as faces de um dado:&quot;);
+  Serial.println(&quot;em pe, de cabeca para baixo, deitado de frente, de costas, de um lado e do outro.&quot;);
+  Serial.println(&quot;Apoie na mesa ou no sofa, 2 s em cada. A cada posicao aceita aparece &#x27;ok&#x27;.&quot;);
+}
+
+void sensorCalFinish() {
+  float off[3], scl[3];
+  bool ok = fitEllipsoid(scVec, scCount, off, scl);
+  const char* tipo = &quot;offset e escala&quot;;
+  if (!ok) { ok = fitSphere(scVec, scCount, off, scl); tipo = &quot;so offset&quot;; }
+  scActive = false;
+  if (!ok) {
+    Serial.println(&quot;Nao consegui calcular: as posicoes ficaram parecidas demais. Rode &#x27;sensor&#x27; de novo variando mais.&quot;);
+    return;
+  }
+  float err = 0;
+  for (int i = 0; i &lt; scCount; i++) {
+    float m = 0;
+    for (int k = 0; k &lt; 3; k++) { float c = (scVec[i][k] - off[k]) / scl[k]; m += c * c; }
+    err = fmaxf(err, fabsf(sqrtf(m) - 1));
+  }
+  for (int k = 0; k &lt; 3; k++) { accOff[k] = off[k]; accScl[k] = scl[k]; }
+  accCalOk = true;
+  saveSensorCal();
+  Serial.printf(&quot;Pronto (%s). Offset X %+.3f Y %+.3f Z %+.3f g | escala X %.3f Y %.3f Z %.3f | erro max %.3f g\n&quot;,
+                tipo, off[0], off[1], off[2], scl[0], scl[1], scl[2], err);
+  Serial.println(&quot;Salvo na placa. Agora segure o controle parado 1 s para ele se ajustar.&quot;);
+  stillCnt = 0; resetMotion(); crState = CR_UP; jpState = JP_GROUND;
+  g0 = 1.0f; fastUntil = 0xFFFFFFFF;   // reinicia a orientacao quando ficar parado
+}
+
+void sensorCalSample(float ax, float ay, float az, float gx, float gy, float gz, unsigned long now) {
+  float s[6] = {ax, ay, az, gx, gy, gz};
+  if (now - scStart &gt; 180000) { scActive = false; Serial.println(&quot;Tempo esgotado. Rode &#x27;sensor&#x27; de novo.&quot;); return; }
+  if (!scRefOk) {                                // primeira amostra parada vira referencia
+    for (int i = 0; i &lt; 6; i++) scRef[i] = s[i];
+    scRefOk = true; scN = 0; scSum[0] = scSum[1] = scSum[2] = 0;
+    return;
+  }
+  bool moved = false;
+  for (int i = 0; i &lt; 3; i++) if (fabsf(s[i] - scRef[i]) &gt; 0.03f) moved = true;
+  for (int i = 3; i &lt; 6; i++) if (fabsf(s[i] - scRef[i]) &gt; 4.0f) moved = true;
+  if (moved) { scRefOk = false; scWaitMove = false; return; }
+  if (scWaitMove) return;                        // ja registrou esta posicao: espera mexer
+  scSum[0] += ax; scSum[1] += ay; scSum[2] += az; scN++;
+  if (scN &lt; 300) return;                         // 1,5 s parado
+  float m[3] = {(float)(scSum[0] / scN), (float)(scSum[1] / scN), (float)(scSum[2] / scN)};
+  float mn = sqrtf(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]);
+  float best = -2;
+  for (int i = 0; i &lt; scCount; i++) {
+    float vn = sqrtf(scVec[i][0] * scVec[i][0] + scVec[i][1] * scVec[i][1] + scVec[i][2] * scVec[i][2]);
+    best = fmaxf(best, (m[0] * scVec[i][0] + m[1] * scVec[i][1] + m[2] * scVec[i][2]) / (mn * vn));
+  }
+  scWaitMove = true;
+  if (best &gt; 0.82f) { Serial.println(&quot;  essa posicao ja foi, vire para outro lado&quot;); return; }   // &lt; 35 graus
+  for (int k = 0; k &lt; 3; k++) scVec[scCount][k] = m[k];
+  scCount++;
+  Serial.printf(&quot;  posicao %d de %d ok\n&quot;, scCount, SC_NEED);
+  if (scCount &gt;= SC_NEED) sensorCalFinish();
+}
+
+// ---------------- Calibracao dos movimentos ----------------
+const unsigned long CAL_DUR[CAL_END] = {0, 2000, 15000, 12000};
+const char* CAL_MSG[CAL_END] = {&quot;&quot;, &quot;Segure o controle PARADO, do jeito que vai jogar&quot;,
+                                &quot;AGACHE e LEVANTE 3 vezes (agache de verdade)&quot;,
+                                &quot;PULE 3 vezes, com uma pausa entre os pulos&quot;};
+unsigned long calT0 = 0; int calCount = -1;
+float stMaxVel = 0, stMaxDev = 0, stMaxGyro = 0; double stSumA = 0, stSumG[3] = {0, 0, 0}; long stN = 0;
+float undoVals[NP]; bool hasUndo = false;
+
+float medianOf(const float* a, int n) {
+  if (n &lt;= 0) return 0;
+  float t[MAXR];
+  for (int i = 0; i &lt; n; i++) t[i] = a[i];
+  for (int i = 1; i &lt; n; i++) { float k = t[i]; int j = i - 1; while (j &gt;= 0 &amp;&amp; t[j] &gt; k) { t[j + 1] = t[j]; j--; } t[j + 1] = k; }
+  return t[n / 2];
+}
+float minOf(const float* a, int n) { float m = 1e9f; for (int i = 0; i &lt; n; i++) m = fminf(m, a[i]); return m; }
+float maxOf(const float* a, int n) { float m = -1e9f; for (int i = 0; i &lt; n; i++) m = fmaxf(m, a[i]); return m; }
+
+void calStartPhase(unsigned long now) {
+  calT0 = now; calCount = -1; calRec = false;
+  Serial.printf(&quot;\n[%d/3] %s\n&quot;, calPhase, CAL_MSG[calPhase]);
+}
+
+void calStart(unsigned long now) {
+  if (spaceByJump) { keySpace(false); spaceByJump = false; }
+  if (crState == CR_DOWN) { crState = CR_UP; keyDown(false); }
+  for (int p = 0; p &lt; CAL_END; p++) { nDesc[p] = nRise[p] = nFly[p] = 0; }
+  stMaxVel = stMaxDev = stMaxGyro = 0; stSumA = 0; stSumG[0] = stSumG[1] = stSumG[2] = 0; stN = 0;
+  Serial.println(&quot;\n######## CALIBRACAO DOS MOVIMENTOS (3 etapas, as teclas ficam desligadas) ########&quot;);
+  if (!accCalOk) Serial.println(&quot;Dica: rode &#x27;sensor&#x27; antes (uma vez so). Melhora muito a precisao.&quot;);
+  calPhase = CAL_STILL; calStartPhase(now);
+}
+
+void calStillSample(float ax, float ay, float az, float gx, float gy, float gz) {
+  stSumA += sqrtf(ax * ax + ay * ay + az * az);
+  stSumG[0] += gx; stSumG[1] += gy; stSumG[2] += gz; stN++;
+  stMaxVel = fmaxf(stMaxVel, fabsf(vel)); stMaxDev = fmaxf(stMaxDev, lastDev); stMaxGyro = fmaxf(stMaxGyro, lastGyro);
+}
+
+void calFinishStill() {
+  if (stN &gt; 100 &amp;&amp; stMaxGyro &lt; 15 &amp;&amp; stMaxDev &lt; 0.10f) {
+    g0 = stSumA / stN;
+    for (int i = 0; i &lt; 3; i++) gBias[i] = stSumG[i] / stN;
+    Serial.printf(&quot;  Parado ok: mede %.3f g\n&quot;, g0);
+  } else {
+    Serial.println(&quot;  O controle mexeu: mantive o ajuste automatico.&quot;);
+  }
+}
+
+void calReport() {
+  Serial.println(&quot;\n==================== RESULTADO ====================&quot;);
+  float sqV[MAXR], sqD[MAXR], ruV[MAXR], jT[MAXR], jF[MAXR], jV[MAXR], dipD[MAXR];
+  int ns = 0, nr = 0, nj = 0, nd = 0;
+  for (int i = 0; i &lt; nDesc[CAL_SQUAT]; i++)
+    if (recDesc[CAL_SQUAT][i].b &gt;= 0.08f) { sqV[ns] = recDesc[CAL_SQUAT][i].a; sqD[ns] = recDesc[CAL_SQUAT][i].b; ns++; }
+  for (int i = 0; i &lt; nRise[CAL_SQUAT]; i++)
+    if (recRise[CAL_SQUAT][i].b &gt;= 0.08f) ruV[nr++] = recRise[CAL_SQUAT][i].a;
+  float jS[MAXR];   // inicio de cada pulo
+  for (int i = 0; i &lt; nFly[CAL_JUMP]; i++) {          // pulo = ficou leve 60 ms+ depois de impulso para cima
+    Rec&amp; r = recFly[CAL_JUMP][i];
+    if (r.a &gt;= 60 &amp;&amp; r.c &gt;= 0.30f) { jT[nj] = r.a; jF[nj] = r.b; jV[nj] = r.c; jS[nj] = r.t; nj++; }
+  }
+  for (int i = 0; i &lt; nDesc[CAL_JUMP]; i++) {         // mergulho = descida que termina ate 600 ms antes de um pulo
+    Rec&amp; r = recDesc[CAL_JUMP][i];
+    bool before = false;
+    for (int k = 0; k &lt; nj; k++) if (jS[k] &gt;= r.t &amp;&amp; jS[k] - r.t &lt;= 600) before = true;
+    if (before &amp;&amp; r.b &gt;= 0.02f) dipD[nd++] = r.b;
+  }
+
+  Serial.printf(&quot;Parado: velocidade max %.2f m/s (bom: abaixo de 0.10)\n&quot;, stMaxVel);
+  Serial.printf(&quot;Agachadas (%d):&quot;, ns);
+  for (int i = 0; i &lt; ns; i++) Serial.printf(&quot;  %.0f cm a %.2f m/s&quot;, sqD[i] * 100, sqV[i]);
+  Serial.printf(&quot;\nLevantadas (%d):&quot;, nr);
+  for (int i = 0; i &lt; nr; i++) Serial.printf(&quot;  %.2f m/s&quot;, ruV[i]);
+  Serial.printf(&quot;\nPulos (%d):&quot;, nj);
+  for (int i = 0; i &lt; nj; i++) Serial.printf(&quot;  %.0f ms no ar, impulso %.2f m/s, forca min %.2f g&quot;, jT[i], jV[i], jF[i]);
+  Serial.printf(&quot;\nMergulhos antes do pulo (%d):&quot;, nd);
+  for (int i = 0; i &lt; nd; i++) Serial.printf(&quot;  %.0f cm&quot;, dipD[i] * 100);
+  Serial.println();
+
+  float nv[NP];
+  for (int i = 0; i &lt; NP; i++) { nv[i] = prm[i].val; undoVals[i] = prm[i].val; }
+  hasUndo = true;
+  Serial.println(&quot;\nAvisos:&quot;);
+  int warns = 0;
+  if (ns &gt;= 2) {
+    float dmin = minOf(sqD, ns) * 100;                     // cm
+    nv[DESCE_VEL] = fminf(prm[DESCE_VEL].padrao, 0.35f * medianOf(sqV, ns));   // so baixa: quem separa agachar de mergulho e a profundidade
+    float dc = 0.35f * dmin;
+    if (nd &gt; 0) {
+      float dipMax = maxOf(dipD, nd) * 100;
+      if (dipMax + 1.5f &lt; 0.75f * dmin) dc = dipMax + 1.5f; // mergulho do pulo nunca aperta a seta
+      else { warns++; Serial.printf(&quot;  - O mergulho antes do pulo (%.0f cm) e quase tao fundo quanto o agachar (%.0f cm): pode abaixar rapidinho antes de pular.\n&quot;, dipMax, dmin); }
+    }
+    nv[DESCE_CM] = constrain(dc, 3.0f, 0.75f * dmin);
+    nv[AGACHA_CM] = constrain(nv[DESCE_CM] + 0.4f * (dmin - nv[DESCE_CM]), nv[DESCE_CM] + 2, 0.85f * dmin);
+  } else { warns++; Serial.println(&quot;  - Menos de 2 agachadas de 8 cm ou mais: mantive os valores do agachar. Agache mais fundo e repita.&quot;); }
+  if (nr &gt;= 2) nv[SOBE_VEL] = fminf(prm[SOBE_VEL].padrao, 0.40f * medianOf(ruV, nr));
+  else { warns++; Serial.println(&quot;  - Menos de 2 levantadas medidas: mantive sobe_vel.&quot;); }
+  if (nj &gt;= 2) { nv[PULO_VEL] = 0.5f * minOf(jV, nj); nv[AR_G] = constrain(maxOf(jF, nj) + 0.25f, 0.30f, 0.50f); }
+  else { warns++; Serial.println(&quot;  - Menos de 2 pulos medidos: mantive os valores do pulo.&quot;); }
+  if (stMaxVel &gt; 0.15f) { warns++; Serial.println(&quot;  - Parado, a velocidade oscilou: confira se o sensor esta bem preso no case.&quot;); }
+  if (!accCalOk) { warns++; Serial.println(&quot;  - Sensor sem calibracao de fabrica: rode &#x27;sensor&#x27; (uma vez) para mais precisao.&quot;); }
+  if (!warns) Serial.println(&quot;  (nenhum)&quot;);
+
+  Serial.println(&quot;\nValores:            antes   -&gt;  agora&quot;);
+  for (int i = 0; i &lt; NP; i++) {
+    setParam(i, nv[i]);
+    if (fabsf(prm[i].val - undoVals[i]) &gt; 0.005f)
+      Serial.printf(&quot;  %-13s %8.2f  -&gt;  %6.2f\n&quot;, prm[i].nome, undoVals[i], prm[i].val);
+  }
+  saveParams();
+  Serial.printf(&quot;\nResumo: a seta aperta depois de descer %.0f cm (mergulhos menores sao ignorados)\n&quot;, P(DESCE_CM));
+  Serial.printf(&quot;e so fica apertada se a descida passar de %.0f cm. Pulo: impulso de %.2f m/s + %.0f ms no ar.\n&quot;, P(AGACHA_CM), P(PULO_VEL), P(AR_MS));
+  Serial.println(&quot;Aplicado e salvo. Para voltar ao que era antes: desfazer&quot;);
+  Serial.println(&quot;===================================================&quot;);
+}
+
+void calTick(unsigned long now) {
+  if (calPhase == CAL_OFF) return;
+  unsigned long t = now - calT0;
+  if (t &lt; 3000) {
+    int c = 3 - (int)(t / 1000);
+    if (c != calCount) { calCount = c; Serial.printf(&quot;  %d...\n&quot;, c); }
+    return;
+  }
+  if (!calRec) { calRec = true; Serial.printf(&quot;  &gt;&gt;&gt; JA! (%lu s) &lt;&lt;&lt;\n&quot;, CAL_DUR[calPhase] / 1000); }
+  if (t &gt;= 3000 + CAL_DUR[calPhase]) {
+    calRec = false;
+    if (calPhase == CAL_STILL) calFinishStill();
+    if (calPhase &lt; CAL_JUMP) { calPhase++; calStartPhase(now); }
+    else { calPhase = CAL_OFF; calReport(); }
+  }
+}
+
+// ---------------- Uma amostra (chamado a 200 Hz, com leituras cruas) ----------------
+int plotDiv = 0;
+void processSample(float rax, float ray, float raz, float gx, float gy, float gz, float dt, unsigned long now) {
+  if (scActive) { sensorCalSample(rax, ray, raz, gx, gy, gz, now); return; }
+  float ax = (rax - accOff[0]) / accScl[0], ay = (ray - accOff[1]) / accScl[1], az = (raz - accOff[2]) / accScl[2];
+  if (fastUntil == 0xFFFFFFFF) {   // logo depois da calibracao do sensor: espera ficar parado
+    bool calm = fabsf(sqrtf(ax * ax + ay * ay + az * az) - 1) &lt; 0.03f &amp;&amp;
+                fabsf(gx - gBias[0]) &lt; 5 &amp;&amp; fabsf(gy - gBias[1]) &lt; 5 &amp;&amp; fabsf(gz - gBias[2]) &lt; 5;
+    if (calm) { if (++stillCnt &gt; 100) { sensorSetFromStill(ax, ay, az, gBias[0], gBias[1], gBias[2], now); stillCnt = 0;
+                                          Serial.println(&quot;Sensor pronto para jogar.&quot;); } }
+    else stillCnt = 0;
+    return;
+  }
+  imuStep(ax, ay, az, gx, gy, gz, dt, now);
+  jumpStep(now);
+  crouchStep(now);
+  if (calPhase == CAL_STILL &amp;&amp; calRec) calStillSample(ax, ay, az, gx, gy, gz);
+  calTick(now);
+  if (logMode == 2 &amp;&amp; ++plotDiv &gt;= 4) {   // 50 Hz no Serial Plotter
+    plotDiv = 0;
+    Serial.printf(&quot;forca_vert:%.2f,ar_g:%.2f,vel:%.2f,desce_vel:%.2f,sobe_vel:%.2f,descida_m:%.2f,baixo:%d,pulo:%d\n&quot;,
+                  fv, P(AR_G), vel, -P(DESCE_VEL), P(SOBE_VEL), pTop - pos,
+                  crState == CR_DOWN ? -1 : 0, spaceByJump ? 1 : 0);
+  }
+}
+
+// ======================= [/ALGORITMO] =======================
+
+// ---------------- Dados salvos na placa ----------------
+Preferences prefs;
+void loadParams() {
+  defaultParams();
+  prefs.begin(&quot;pulo3&quot;, true);
+  for (int i = 0; i &lt; NP; i++) setParam(i, prefs.getFloat(prm[i].nome, prm[i].padrao));
+  accCalOk = prefs.getBool(&quot;acc_ok&quot;, false);
+  if (accCalOk) {
+    accOff[0] = prefs.getFloat(&quot;acc_ox&quot;, 0); accOff[1] = prefs.getFloat(&quot;acc_oy&quot;, 0); accOff[2] = prefs.getFloat(&quot;acc_oz&quot;, 0);
+    accScl[0] = prefs.getFloat(&quot;acc_sx&quot;, 1); accScl[1] = prefs.getFloat(&quot;acc_sy&quot;, 1); accScl[2] = prefs.getFloat(&quot;acc_sz&quot;, 1);
+  }
+  prefs.end();
+}
+void saveParams() {
+  prefs.begin(&quot;pulo3&quot;, false);
+  for (int i = 0; i &lt; NP; i++) prefs.putFloat(prm[i].nome, prm[i].val);
+  prefs.end();
+}
+void saveSensorCal() {
+  prefs.begin(&quot;pulo3&quot;, false);
+  prefs.putFloat(&quot;acc_ox&quot;, accOff[0]); prefs.putFloat(&quot;acc_oy&quot;, accOff[1]); prefs.putFloat(&quot;acc_oz&quot;, accOff[2]);
+  prefs.putFloat(&quot;acc_sx&quot;, accScl[0]); prefs.putFloat(&quot;acc_sy&quot;, accScl[1]); prefs.putFloat(&quot;acc_sz&quot;, accScl[2]);
+  prefs.putBool(&quot;acc_ok&quot;, true);
+  prefs.end();
+}
+
+// ---------------- Teclado BLE ----------------
+const uint8_t hidReportDescriptor[] = {
+  0x05, 0x01, 0x09, 0x06, 0xA1, 0x01,       // Generic Desktop, Keyboard
+  0x85, 0x01,                               //   Report ID 1
+  0x05, 0x07, 0x19, 0xE0, 0x29, 0xE7,       //   modificadores
+  0x15, 0x00, 0x25, 0x01, 0x75, 0x01, 0x95, 0x08, 0x81, 0x02,
+  0x95, 0x01, 0x75, 0x08, 0x81, 0x01,       //   reservado
+  0x95, 0x05, 0x75, 0x01, 0x05, 0x08, 0x19, 0x01, 0x29, 0x05, 0x91, 0x02, // LEDs
+  0x95, 0x01, 0x75, 0x03, 0x91, 0x01,
+  0x95, 0x06, 0x75, 0x08, 0x15, 0x00, 0x25, 0x65,
+  0x05, 0x07, 0x19, 0x00, 0x29, 0x65, 0x81, 0x00, //   ate 6 teclas
+  0xC0
+};
+struct KeyReport { uint8_t modifiers; uint8_t reserved; uint8_t keys[6]; } __attribute__((packed));
+const uint8_t KEY_SPACE = 0x2C, KEY_DOWN = 0x51;   // HID Usage Tables, pagina Keyboard
+
+BLEHIDDevice* hid;
+BLECharacteristic* inputKeys;
+#if defined(CONFIG_BLUEDROID_ENABLED)
+BLE2902* cccd = nullptr;                 // a TV/Mac liga as notificacoes aqui quando ativa o teclado
+#endif
+volatile bool connected = false;
+bool spaceDown = false, arrowDown = false;
+unsigned long spaceAt = 0, downAt = 0;
+volatile int notifyStatus = -1;          // resultado do ultimo envio, informado pela biblioteca BLE
+volatile uint32_t notifyCode = 0;
+unsigned long keyTestT0 = 0;             // teste de teclas em andamento (0 = nao)
+
+class ServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer*) { connected = true; }
+  void onDisconnect(BLEServer*) {
+    connected = false; spaceDown = false; arrowDown = false;
+    BLEDevice::startAdvertising();
+  }
+};
+
+class SecurityCallbacks : public BLESecurityCallbacks {
+  bool onSecurityRequest() { return true; }
+#if defined(CONFIG_BLUEDROID_ENABLED)
+  void onAuthenticationComplete(esp_ble_auth_cmpl_t a) { Serial.println(a.success ? &quot;Bluetooth: pareado&quot; : &quot;Bluetooth: FALHA no pareamento&quot;); }
+#elif defined(CONFIG_NIMBLE_ENABLED)
+  void onAuthenticationComplete(ble_gap_conn_desc* d) { Serial.println(d-&gt;sec_state.encrypted ? &quot;Bluetooth: pareado&quot; : &quot;Bluetooth: FALHA no pareamento&quot;); }
+#endif
+  uint32_t onPassKeyRequest() { return 0; }
+  void onPassKeyNotify(uint32_t) {}
+  bool onConfirmPIN(uint32_t) { return true; }
+};
+
+class KeyNotifyCallbacks : public BLECharacteristicCallbacks {
+  void onStatus(BLECharacteristic*, Status s, uint32_t code) override { notifyStatus = (int)s; notifyCode = code; }
+};
+
+// 0 desconectado | 1 conectado, mas a TV/Mac ainda nao ativou o teclado | 2 teclado ativo
+int kbState() {
+  if (!connected) return 0;
+#if defined(CONFIG_BLUEDROID_ENABLED)
+  if (cccd != nullptr &amp;&amp; !cccd-&gt;getNotifications()) return 1;
+#endif
+  return 2;
+}
+const char* kbText(int st) {
+  return st == 0 ? &quot;DESCONECTADO - conecte \&quot;Controle Pulo\&quot; no Bluetooth da TV ou do Mac&quot;
+       : st == 1 ? &quot;conectado, esperando a TV/Mac ativar o teclado...&quot;
+                 : &quot;TECLADO ATIVO - as teclas vao para a janela em foco na TV/Mac&quot;;
+}
+
+// Envia o estado das teclas e devolve o que aconteceu (para o log)
+const char* sendKeys() {
+  static char buf[64];
+  bool calibrating = calPhase != CAL_OFF || scActive;
+  KeyReport r;
+  memset(&amp;r, 0, sizeof(r));
+  int i = 0;
+  if (!calibrating) {                    // calibrando: manda tudo solto
+    if (spaceDown) r.keys[i++] = KEY_SPACE;
+    if (arrowDown) r.keys[i++] = KEY_DOWN;
+  }
+  if (!connected) return &quot;NAO enviada: Bluetooth desconectado&quot;;
+  notifyStatus = -1;
+  inputKeys-&gt;setValue((uint8_t*)&amp;r, sizeof(r));
+  inputKeys-&gt;notify();
+  if (calibrating) return &quot;NAO enviada: calibrando, teclas desligadas&quot;;
+  switch (notifyStatus) {
+    case BLECharacteristicCallbacks::SUCCESS_NOTIFY:        return &quot;enviada&quot;;
+    case BLECharacteristicCallbacks::ERROR_NOTIFY_DISABLED:
+    case BLECharacteristicCallbacks::ERROR_NO_SUBSCRIBER:   return &quot;NAO enviada: a TV/Mac ainda nao ativou o teclado&quot;;
+    case BLECharacteristicCallbacks::ERROR_NO_CLIENT:       return &quot;NAO enviada: Bluetooth desconectado&quot;;
+    case -1:                                                return &quot;enviada (sem confirmacao)&quot;;
+    default:
+      snprintf(buf, sizeof(buf), &quot;NAO enviada: erro do Bluetooth (%d/%lu)&quot;, notifyStatus, (unsigned long)notifyCode);
+      return buf;
+  }
+}
+
+void applySpace(bool on, const char* origem) {
+  if (spaceDown == on) return;
+  spaceDown = on;
+  unsigned long now = millis();
+  const char* st = sendKeys();
+  if (on) { spaceAt = now; LOG(&quot;  &gt;&gt; ESPACO apertado%s   [%s]\n&quot;, origem, st); }
+  else LOG(&quot;  &gt;&gt; ESPACO solto, ficou %lu ms   [%s]\n&quot;, now - spaceAt, st);
+}
+void applyDown(bool on, const char* origem) {
+  if (arrowDown == on) return;
+  arrowDown = on;
+  unsigned long now = millis();
+  const char* st = sendKeys();
+  if (on) { downAt = now; LOG(&quot;  &gt;&gt; SETA BAIXO apertada%s   [%s]\n&quot;, origem, st); }
+  else LOG(&quot;  &gt;&gt; SETA BAIXO solta, ficou %lu ms   [%s]\n&quot;, now - downAt, st);
+}
+// Chamadas pelo algoritmo (ignoradas durante o teste de teclas)
+void keySpace(bool on) { if (!keyTestT0) applySpace(on, &quot;&quot;); }
+void keyDown(bool on) { if (!keyTestT0) applyDown(on, &quot;&quot;); }
+
+// ---------------- Teste de teclas (comando &quot;teclas&quot;) ----------------
+struct TestStep { unsigned long at; bool space; bool on; };
+const TestStep KEYTEST[] = {
+  {5000, true, true},  {5150, true, false},     // ESPACO
+  {6000, true, true},  {6150, true, false},     // ESPACO
+  {7000, false, true}, {9000, false, false},    // SETA BAIXO segurada 2 s
+};
+const int KEYTEST_N = sizeof(KEYTEST) / sizeof(KEYTEST[0]);
+int keyTestStep = 0, keyTestCount = -1;
+
+void keyTestStart() {
+  if (calPhase != CAL_OFF || scActive) { Serial.println(&quot;Espere a calibracao terminar.&quot;); return; }
+  applySpace(false, &quot;&quot;); applyDown(false, &quot;&quot;);
+  logMode = 1;
+  keyTestT0 = millis(); if (!keyTestT0) keyTestT0 = 1;
+  keyTestStep = 0; keyTestCount = -1;
+  Serial.printf(&quot;\n######## TESTE DE TECLAS ########\nBluetooth: %s\n&quot;, kbText(kbState()));
+  Serial.println(&quot;Clique AGORA na janela do jogo (ou no testador do guia). Em 5 s:&quot;);
+  Serial.println(&quot;ESPACO 2 vezes e depois SETA BAIXO segurada por 2 s.&quot;);
+}
+
+void keyTestTick() {
+  if (!keyTestT0) return;
+  unsigned long t = millis() - keyTestT0;
+  if (t &lt; 5000) {
+    int c = 5 - (int)(t / 1000);
+    if (c != keyTestCount) { keyTestCount = c; Serial.printf(&quot;  %d...\n&quot;, c); }
+    return;
+  }
+  while (keyTestStep &lt; KEYTEST_N &amp;&amp; t &gt;= KEYTEST[keyTestStep].at) {
+    const TestStep&amp; st = KEYTEST[keyTestStep++];
+    if (st.space) applySpace(st.on, &quot; (teste)&quot;); else applyDown(st.on, &quot; (teste)&quot;);
+  }
+  if (keyTestStep &gt;= KEYTEST_N) {
+    keyTestT0 = 0;
+    Serial.println(&quot;Teste concluido. O personagem pulou 2 vezes e abaixou por 2 s?&quot;);
+    Serial.println(&quot;  - Se as linhas dizem [enviada] e nada aconteceu: o foco nao estava na janela do jogo.&quot;);
+    Serial.println(&quot;  - Se dizem [NAO enviada: ...]: o motivo esta escrito na propria linha.&quot;);
+  }
+}
+
+void bleInit() {
+  BLEDevice::init(BT_NAME);
+  BLESecurity* sec = new BLESecurity();
+  sec-&gt;setCapability(ESP_IO_CAP_NONE);
+  sec-&gt;setAuthenticationMode(true, false, true);
+  BLEDevice::setSecurityCallbacks(new SecurityCallbacks());
+  BLEServer* server = BLEDevice::createServer();
+  server-&gt;setCallbacks(new ServerCallbacks());
+  hid = new BLEHIDDevice(server);
+  hid-&gt;manufacturer()-&gt;setValue(&quot;DIY&quot;);
+  hid-&gt;pnp(0x02, 0xe502, 0xa111, 0x0210);
+  hid-&gt;hidInfo(0x00, 0x01);
+  hid-&gt;reportMap((uint8_t*)hidReportDescriptor, sizeof(hidReportDescriptor));
+  inputKeys = hid-&gt;inputReport(1);
+  inputKeys-&gt;setCallbacks(new KeyNotifyCallbacks());
+#if defined(CONFIG_BLUEDROID_ENABLED)
+  cccd = (BLE2902*)inputKeys-&gt;getDescriptorByUUID(BLEUUID((uint16_t)0x2902));
+#endif
+  hid-&gt;outputReport(1);
+  hid-&gt;setBatteryLevel(100);
+  hid-&gt;startServices();
+  BLEAdvertising* adv = BLEDevice::getAdvertising();
+  adv-&gt;setAppearance(HID_KEYBOARD);
+  adv-&gt;addServiceUUID(hid-&gt;hidService()-&gt;getUUID());
+  adv-&gt;setScanResponse(true);
+  adv-&gt;setMinPreferred(0x06);
+  adv-&gt;setMaxPreferred(0x12);
+  BLEDevice::startAdvertising();
+  Serial.printf(&quot;Bluetooth pronto: procure \&quot;%s\&quot;\n&quot;, BT_NAME);
+}
+
+// ---------------- MPU6050 (registradores do datasheet) ----------------
+const uint8_t MPU_ADDR = 0x68;
+bool mpuOk = false;
+
+void mpuWrite(uint8_t reg, uint8_t val) {
+  Wire.beginTransmission(MPU_ADDR); Wire.write(reg); Wire.write(val); Wire.endTransmission();
+}
+uint8_t mpuRead8(uint8_t reg) {
+  Wire.beginTransmission(MPU_ADDR); Wire.write(reg);
+  if (Wire.endTransmission(false) != 0) return 0xFF;
+  if (Wire.requestFrom(MPU_ADDR, (size_t)1) != 1) return 0xFF;
+  return Wire.read();
+}
+bool mpuRead(float&amp; ax, float&amp; ay, float&amp; az, float&amp; gx, float&amp; gy, float&amp; gz) {
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x3B);                                  // ACCEL_XOUT_H ... GYRO_ZOUT_L
+  if (Wire.endTransmission(false) != 0) return false;
+  if (Wire.requestFrom(MPU_ADDR, (size_t)14) != 14) return false;
+  int16_t r[7];
+  for (int i = 0; i &lt; 7; i++) { uint8_t hi = Wire.read(); uint8_t lo = Wire.read(); r[i] = (int16_t)((hi &lt;&lt; 8) | lo); }
+  ax = r[0] / 4096.0f; ay = r[1] / 4096.0f; az = r[2] / 4096.0f;   // ±8 g
+  gx = r[4] / 32.8f;   gy = r[5] / 32.8f;   gz = r[6] / 32.8f;     // ±1000 graus/s
+  return true;
+}
+void mpuInit() {
+  Wire.begin(PIN_SDA, PIN_SCL, 400000);
+  mpuWrite(0x6B, 0x80); delay(100);                  // reset
+  mpuWrite(0x6B, 0x01); delay(10);                   // acorda, relogio do giroscopio X
+  uint8_t who = mpuRead8(0x75);
+  mpuOk = who != 0xFF;
+  mpuWrite(0x19, 4);                                 // 1 kHz / (1+4) = 200 Hz
+  mpuWrite(0x1A, 0x03);                              // filtro 44 Hz (atraso ~5 ms)
+  mpuWrite(0x1B, 0x10);                              // giroscopio ±1000 graus/s
+  mpuWrite(0x1C, 0x10);                              // acelerometro ±8 g
+  if (who == 0x70 || who == 0x71 || who == 0x73) mpuWrite(0x1D, 0x03);   // clones da familia MPU6500
+  Serial.printf(&quot;Sensor WHO_AM_I = 0x%02X %s\n&quot;, who,
+                who == 0x68 ? &quot;(MPU6050)&quot; : who == 0xFF ? &quot;(SEM RESPOSTA: confira os 4 fios; o BOOT continua funcionando)&quot;
+                                                        : &quot;(chip compativel/clone)&quot;);
+}
+
+// Espera 1 s parado (ate 10 s) e ajusta o sensor
+void sensorBootCal() {
+  Serial.println(&quot;Ajustando o sensor: deixe o controle PARADO (LED piscando)...&quot;);
+  float ref[6] = {0}, sum[6] = {0}; int n = 0;
+  unsigned long start = millis(), last = 0;
+  while (n &lt; 200 &amp;&amp; millis() - start &lt; 10000) {
+    if (micros() - last &lt; 5000) continue;
+    last = micros();
+    float s[6];
+    if (!mpuRead(s[0], s[1], s[2], s[3], s[4], s[5])) continue;
+    for (int k = 0; k &lt; 3; k++) s[k] = (s[k] - accOff[k]) / accScl[k];
+    digitalWrite(PIN_LED, (millis() / 100) % 2);
+    if (n == 0) for (int i = 0; i &lt; 6; i++) ref[i] = s[i];
+    bool moved = false;
+    for (int i = 0; i &lt; 3; i++) if (fabsf(s[i] - ref[i]) &gt; 0.05f) moved = true;
+    for (int i = 3; i &lt; 6; i++) if (fabsf(s[i] - ref[i]) &gt; 4.0f) moved = true;
+    if (moved) { n = 0; for (int i = 0; i &lt; 6; i++) sum[i] = 0; continue; }
+    for (int i = 0; i &lt; 6; i++) sum[i] += s[i];
+    n++;
+  }
+  if (n &gt;= 200) {
+    for (int i = 0; i &lt; 6; i++) sum[i] /= n;
+    sensorSetFromStill(sum[0], sum[1], sum[2], sum[3], sum[4], sum[5], millis());
+    Serial.printf(&quot;Pronto! Sensor parado mede %.3f g\n&quot;, g0);
+  } else {
+    sensorSetFromStill(ref[0], ref[1], ref[2], ref[3], ref[4], ref[5], millis());
+    Serial.println(&quot;Nao ficou parado 1 s: comecei assim mesmo, ele se ajusta quando ficar parado.&quot;);
+  }
+  if (!accCalOk) Serial.println(&quot;&gt;&gt; Recomendado: digite &#x27;sensor&#x27; (uma vez so) para corrigir o erro de fabrica do sensor.&quot;);
+  digitalWrite(PIN_LED, LOW);
+}
+
+// ---------------- Comandos ----------------
+void printHelp() {
+  Serial.println(&quot;\nComandos (Serial Monitor 115200, &#x27;New Line&#x27;):&quot;);
+  Serial.println(&quot;  teclas              testa o envio: ESPACO 2x e SETA BAIXO 2 s (clique antes na janela do jogo)&quot;);
+  Serial.println(&quot;  sensor              calibra o erro de fabrica do sensor (UMA vez; 6 posicoes paradas)&quot;);
+  Serial.println(&quot;  cal                 calibra os movimentos da crianca (parado, agachar, pular) e aplica&quot;);
+  Serial.println(&quot;  desfazer            volta os valores de antes da ultima &#x27;cal&#x27;&quot;);
+  Serial.println(&quot;  ver                 mostra parametros e estado do sensor&quot;);
+  Serial.println(&quot;  &lt;nome&gt; &lt;valor&gt;      muda um parametro. Ex.: desce_vel 0.15&quot;);
+  Serial.println(&quot;  log 0 | 1 | 2       silencio | eventos (padrao) | grafico (Serial Plotter)&quot;);
+  Serial.println(&quot;  padrao              volta os parametros de movimento aos valores de fabrica&quot;);
+  Serial.println(&quot;Lembrete: as teclas vao para a janela EM FOCO. Depois de digitar um comando aqui,&quot;);
+  Serial.println(&quot;clique na janela do jogo antes de se mexer (o Serial Monitor continua mostrando o log).&quot;);
+}
+
+void printStatus() {
+  printParams();
+  Serial.printf(&quot;\nSensor: %s | offset (%+.3f, %+.3f, %+.3f) g | escala (%.3f, %.3f, %.3f)\n&quot;,
+                accCalOk ? &quot;calibrado&quot; : &quot;SEM calibracao de fabrica (rode &#x27;sensor&#x27;)&quot;,
+                accOff[0], accOff[1], accOff[2], accScl[0], accScl[1], accScl[2]);
+  Serial.printf(&quot;Parado mede %.3f g | giroscopio parado (%.1f, %.1f, %.1f) graus/s\n&quot;, g0, gBias[0], gBias[1], gBias[2]);
+  Serial.printf(&quot;Agora: forca vertical %.2f g | velocidade %.2f m/s | %s | %s\n&quot;,
+                fv, vel, still ? &quot;parado&quot; : &quot;mexendo&quot;, crState == CR_DOWN ? &quot;ABAIXADO&quot; : &quot;em pe&quot;);
+  Serial.printf(&quot;Bluetooth: %s\n&quot;, kbText(kbState()));
+}
+
+void handleCommand(String cmd) {
+  cmd.trim(); cmd.toLowerCase(); cmd.replace(&#x27;,&#x27;, &#x27;.&#x27;);
+  if (!cmd.length()) return;
+  int sp = cmd.indexOf(&#x27; &#x27;);
+  String w = sp &lt; 0 ? cmd : cmd.substring(0, sp);
+  String arg = sp &lt; 0 ? &quot;&quot; : cmd.substring(sp + 1);
+  arg.trim();
+  if (w == &quot;ajuda&quot; || w == &quot;?&quot; || w == &quot;help&quot;) printHelp();
+  else if (w == &quot;ver&quot; || w == &quot;params&quot;) printStatus();
+  else if (w == &quot;teclas&quot; || w == &quot;teste&quot;) keyTestStart();
+  else if (w == &quot;sensor&quot;) { calPhase = CAL_OFF; calRec = false; sensorCalStart(millis()); }
+  else if (w == &quot;cal&quot;) {
+    if (scActive) Serial.println(&quot;Termine primeiro a calibracao do sensor (ou reinicie a placa).&quot;);
+    else calStart(millis());
+  }
+  else if (w == &quot;desfazer&quot;) {
+    if (!hasUndo) { Serial.println(&quot;Nada para desfazer.&quot;); return; }
+    for (int i = 0; i &lt; NP; i++) prm[i].val = undoVals[i];
+    saveParams(); hasUndo = false; Serial.println(&quot;Valores anteriores restaurados.&quot;); printParams();
+  }
+  else if (w == &quot;padrao&quot;) { defaultParams(); saveParams(); Serial.println(&quot;Valores de fabrica restaurados.&quot;); printParams(); }
+  else if (w == &quot;log&quot;) { logMode = constrain(arg.toInt(), 0, 2); Serial.printf(&quot;log = %d\n&quot;, logMode); }
+  else {
+    for (int i = 0; i &lt; NP; i++) {
+      if (w == prm[i].nome) {
+        if (!arg.length()) { Serial.printf(&quot;%s = %.2f  (%s)\n&quot;, prm[i].nome, prm[i].val, prm[i].ajuda); return; }
+        setParam(i, arg.toFloat()); saveParams();
+        Serial.printf(&quot;%s = %.2f (salvo)\n&quot;, prm[i].nome, prm[i].val);
+        return;
+      }
+    }
+    Serial.println(&quot;Nao entendi. Digite: ajuda&quot;);
+  }
+}
+
+// ---------------- Setup / Loop ----------------
+void setup() {
+  Serial.setTxBufferSize(2048);
+  Serial.begin(115200);
+  pinMode(PIN_LED, OUTPUT);
+  pinMode(PIN_BOOT, INPUT_PULLUP);
+  delay(300);
+  Serial.println(&quot;\n=== Controle do Pulo v3.1 ===&quot;);
+  loadParams();
+  mpuInit();
+  bleInit();
+  if (mpuOk) sensorBootCal();
+  printHelp();
+}
+
+void loop() {
+  static uint32_t lastUs = 0;
+  static bool bootWas = false;
+  static unsigned long bootT = 0;
+  static int lastKb = -1;
+  static String line;
+
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == &#x27;\n&#x27; || c == &#x27;\r&#x27;) { if (line.length()) handleCommand(line); line = &quot;&quot;; }
+    else if (line.length() &lt; 64) line += c;
+  }
+
+  int kb = kbState();                                    // avisa quando o Bluetooth muda
+  if (kb != lastKb) { lastKb = kb; Serial.printf(&quot;Bluetooth: %s\n&quot;, kbText(kb)); }
+
+  bool boot = digitalRead(PIN_BOOT) == LOW;              // BOOT = Espaco (com anti-repique)
+  if (boot != bootWas &amp;&amp; millis() - bootT &gt; 30) {
+    bootWas = boot; bootT = millis();
+    if (!keyTestT0) applySpace(boot, &quot; (botao BOOT)&quot;);
+  }
+  keyTestTick();
+
+  uint32_t nowUs = micros();
+  if (nowUs - lastUs &lt; 5000) return;                     // 200 amostras por segundo
+  float dt = (nowUs - lastUs) * 1e-6f;
+  lastUs = nowUs;
+  if (dt &gt; 0.02f) dt = 0.02f;
+
+  // LED: pisca rapido = calibrando o sensor | piscada curta a cada 1 s = teclado NAO ativo
+  //      aceso = tecla apertada | apagado = pronto
+  bool led;
+  if (scActive) led = (millis() / 250) % 2;
+  else led = spaceDown || arrowDown || (kb != 2 &amp;&amp; millis() % 1000 &lt; 100);
+  digitalWrite(PIN_LED, led ? HIGH : LOW);
+  if (!mpuOk) return;
+
+  float ax, ay, az, gx, gy, gz;
+  static int fails = 0;
+  if (!mpuRead(ax, ay, az, gx, gy, gz)) {
+    if (++fails == 200) Serial.println(&quot;Aviso: o sensor parou de responder (confira os fios).&quot;);
+    return;
+  }
+  fails = 0;
+  processSample(ax, ay, az, gx, gy, gz, dt, millis());
+}
+</pre>
+  <ol>
+    <li><b>Upload.</b> Quando aparecer <code>Connecting…</code>, segure <b>BOOT</b> até começar a gravar.</li>
+    <li>Abra o <b>Serial Monitor</b> em <b>115200</b>, com <b>New Line</b> no final de linha, e aperte <b>EN</b> com o controle <b>parado</b>. O LED pisca enquanto ele se ajusta.</li>
+    <li>Deve aparecer: <code>Sensor WHO_AM_I = 0x68</code> (ou outro valor, se for clone), <code>Bluetooth pronto</code> e <code>Pronto! Sensor parado mede 1.0xx g</code>.</li>
+  </ol>
+  <p class="note">Os parâmetros da v3 ficam num espaço novo da memória da placa. Os valores salvos pelas versões antigas (como o <code>-1.54</code>) não são usados.</p>
+</section>
+
+<section>
+  <div class="step">PASSO 5 · UMA VEZ SÓ</div>
+  <h2>Calibrar o sensor</h2>
+  <p>Digite <code>sensor</code> no Serial Monitor. Depois deixe o controle <b>parado em 6 posições</b>, como as faces de um dado: em pé, de cabeça para baixo, deitado de frente, de costas, de um lado e do outro. Apoie na mesa ou no sofá, cerca de 2 s em cada, até aparecer <code>posicao N de 6 ok</code>. O LED pisca durante esse processo.</p>
+  <p>No fim aparecem o offset e a escala de cada eixo, e tudo fica salvo na placa. Só precisa refazer se trocar ou mexer o sensor de lugar.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Mensagem</th><th>O que fazer</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">essa posicao ja foi, vire para outro lado</td><td>Vire o controle para uma face diferente (pelo menos 35° de diferença).</td></tr>
+      <tr><td class="mono">Pronto (offset e escala) ... erro max 0.00x g</td><td>Deu certo. Segure parado 1 s até aparecer <code>Sensor pronto para jogar.</code></td></tr>
+      <tr><td class="mono">Nao consegui calcular</td><td>As posições ficaram parecidas. Rode <code>sensor</code> de novo, variando bem as faces.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tip">No simulador, com 30 sensores sorteados (erros de até ±80 mg e ±4%), a calibração recuperou o offset com erro máximo de 0,001 g e a escala com erro de 0,002.</p>
+</section>
+
+<section>
+  <div class="step">PASSO 6</div>
+  <h2>Parear com a TV (ou o Mac)</h2>
+  <ul>
+    <li><b>Mac:</b> Ajustes do Sistema → Bluetooth → <b>Controle Pulo</b> → Conectar.</li>
+    <li><b>TV Samsung:</b> Configurações → Geral → Gerenciador de dispositivo externo → Gerenciador de dispositivos de entrada → Lista de dispositivos Bluetooth → <b>Controle Pulo</b>.</li>
+  </ul>
+  <p>O ESP32 aceita uma conexão por vez. Para passar do Mac para a TV, desconecte no Mac primeiro.</p>
+  <p class="note"><b>Não confirmado:</b> o caminho de menu da TV é o que a Samsung publica para TVs de 2018 a 2021, em inglês e sem citar o Q6FN. Os nomes em português são tradução minha.</p>
+</section>
+
+<section id="teclas">
+  <div class="step">PASSO 6b · CONFIRA AS TECLAS</div>
+  <h2>As teclas estão chegando?</h2>
+  <p class="tip"><b>As teclas vão para a janela em foco.</b> Depois de digitar um comando no Serial Monitor, o foco fica na caixa de texto dele, e os Espaços do controle são digitados ali. Se o foco estiver no editor de código, eles entram no seu código. Antes de se mexer, <b>clique na janela do jogo</b>. O Serial Monitor continua mostrando o log mesmo sem foco.</p>
+  <p>O log mostra o estado do Bluetooth sempre que ele muda, e cada tecla com o resultado do envio:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>No log</th><th>Significa</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">Bluetooth: TECLADO ATIVO</td><td>Pronto. As teclas vão para a janela em foco na TV/Mac.</td></tr>
+      <tr><td class="mono">Bluetooth: conectado, esperando a TV/Mac ativar o teclado...</td><td>Conectou, mas a TV/Mac ainda não liberou o teclado. Se não passar disso em alguns segundos, remova "Controle Pulo" do Bluetooth e pareie de novo.</td></tr>
+      <tr><td class="mono">Bluetooth: DESCONECTADO</td><td>Conecte "Controle Pulo" no Bluetooth (passo 6).</td></tr>
+      <tr><td class="mono">&gt;&gt; ESPACO apertado   [enviada]</td><td>A tecla saiu pelo Bluetooth. Se nada aconteceu no jogo, o foco estava em outra janela.</td></tr>
+      <tr><td class="mono">[NAO enviada: calibrando, teclas desligadas]</td><td>Durante <code>cal</code> e <code>sensor</code>, as teclas ficam desligadas de propósito.</td></tr>
+      <tr><td class="mono">[NAO enviada: Bluetooth desconectado]</td><td>Nada conectado.</td></tr>
+      <tr><td class="mono">[NAO enviada: a TV/Mac ainda nao ativou o teclado]</td><td>Mesmo caso do "esperando ativar".</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Comando <code>teclas</code></h3>
+  <p>Digite <code>teclas</code> e, em seguida, <b>clique na janela do jogo</b> (ou no testador abaixo). Depois de uma contagem de 5 s, o controle aperta o Espaço 2 vezes e segura a seta para baixo por 2 s, sem precisar se mexer. Exemplo do log:</p>
+  <pre>[   9.50s]   &gt;&gt; ESPACO apertado (teste)   [enviada]
+[   9.65s]   &gt;&gt; ESPACO solto, ficou 150 ms   [enviada]
+[  11.50s]   &gt;&gt; SETA BAIXO apertada (teste)   [enviada]
+[  13.50s]   &gt;&gt; SETA BAIXO solta, ficou 2000 ms   [enviada]</pre>
+  <h3>LED azul da placa</h3>
+  <p>Piscada curta a cada 1 s: teclado <b>não</b> ativo. Apagado: pronto. Aceso: tecla apertada. Piscando rápido: calibrando o sensor. Isso vale se a sua placa tiver o LED no pino D2, como a maioria dessas placas.</p>
+  <h3>Testador de teclas</h3>
+  <p>Abra esta página no Mac, clique no quadro e mexa o controle, aperte <b>BOOT</b> ou rode <code>teclas</code>. As teclas que chegarem a este navegador acendem aqui, com o tempo que ficaram apertadas.</p>
+  <div class="kt" id="kt" tabindex="0" role="group" aria-label="Testador de teclas">
+    <div class="kt-hint" id="kt-hint">Clique aqui para ativar o testador</div>
+    <div class="kt-keys">
+      <div class="kt-key" id="kt-Space"><div class="kt-cap">ESPAÇO</div><div class="kt-meta">apertos: <span id="kt-Space-n">0</span> · último <span id="kt-Space-t">—</span></div></div>
+      <div class="kt-key" id="kt-ArrowDown"><div class="kt-cap">↓</div><div class="kt-meta">apertos: <span id="kt-ArrowDown-n">0</span> · último <span id="kt-ArrowDown-t">—</span></div></div>
+    </div>
+    <ol class="kt-log" id="kt-log" aria-live="polite"></ol>
+  </div>
+  <p class="note"><b>Não confirmado:</b> ao conectar um teclado novo, o Mac às vezes abre o "Assistente de Configuração do Teclado". Essa janela rouba o foco. Se aparecer, feche.</p>
+</section>
+<script>
+(function(){
+  var box=document.getElementById('kt'); if(!box) return;
+  var hint=document.getElementById('kt-hint'), logEl=document.getElementById('kt-log');
+  var down={}, n={Space:0,ArrowDown:0};
+  var label={Space:['ESPAÇO apertado','ESPAÇO solto'],ArrowDown:['↓ apertada','↓ solta']};
+  function key(e){ if(e.code==='Space'||e.key===' '||e.key==='Spacebar') return 'Space';
+    if(e.code==='ArrowDown'||e.key==='ArrowDown'||e.key==='Down') return 'ArrowDown'; return null; }
+  function stamp(){ var d=new Date(); return d.toTimeString().slice(0,8)+'.'+String(d.getMilliseconds()).padStart(3,'0'); }
+  function log(msg){ var li=document.createElement('li'); li.textContent=stamp()+'  '+msg;
+    logEl.insertBefore(li,logEl.firstChild); while(logEl.children.length>8) logEl.removeChild(logEl.lastChild); }
+  function release(k){ if(!down[k]) return; down[k]=null; document.getElementById('kt-'+k).classList.remove('down'); }
+  box.addEventListener('keydown',function(e){ var k=key(e); if(!k) return; e.preventDefault();
+    if(e.repeat||down[k]) return; down[k]=performance.now(); n[k]++;
+    document.getElementById('kt-'+k).classList.add('down');
+    document.getElementById('kt-'+k+'-n').textContent=n[k]; log(label[k][0]); });
+  box.addEventListener('keyup',function(e){ var k=key(e); if(!k) return; e.preventDefault(); if(!down[k]) return;
+    var ms=Math.round(performance.now()-down[k]); release(k);
+    document.getElementById('kt-'+k+'-t').textContent=ms+' ms'; log(label[k][1]+' ('+ms+' ms)'); });
+  box.addEventListener('focus',function(){ box.classList.add('on'); hint.textContent='Ativo: as teclas que chegarem aqui acendem abaixo'; });
+  box.addEventListener('blur',function(){ box.classList.remove('on'); hint.textContent='Clique aqui para ativar o testador'; release('Space'); release('ArrowDown'); });
+  box.addEventListener('click',function(){ box.focus(); });
+})();
+</script>
+
+
+<section>
+  <div class="step">PASSO 7 · COM A CRIANÇA</div>
+  <h2>Calibrar os movimentos</h2>
+  <p>Deixe o controle ligado no Mac pelo USB (com um cabo comprido) e digite <code>cal</code>. São 3 etapas, cada uma com contagem <code>3… 2… 1… JA!</code>:</p>
+  <ol>
+    <li><b>Parado</b> (2 s), segurando do jeito que vai jogar.</li>
+    <li><b>Agachar e levantar 3 vezes</b> (15 s), agachando de verdade.</li>
+    <li><b>Pular 3 vezes</b> (12 s), com uma pausa entre os pulos.</li>
+  </ol>
+  <p>No fim aparece um relatório com as agachadas, levantadas, pulos e mergulhos medidos, e os novos valores são <b>aplicados e salvos sozinhos</b>. Se piorar, digite <code>desfazer</code>.</p>
+  <p>O principal que a <code>cal</code> descobre é a profundidade do mergulho que a criança faz antes de pular. Com isso, a seta só aperta depois de descer mais que esse mergulho, e o personagem para de "abaixar rapidinho" antes de cada pulo.</p>
+  <p class="note"><b>Limite físico:</b> se a criança agacha pouco (por exemplo, 12 cm) e mergulha fundo antes de pular (11 cm), não dá para separar os dois só pela profundidade. Nesse caso a <code>cal</code> avisa, e vale pedir para ela agachar mais fundo.</p>
+</section>
+
+<section>
+  <div class="step">COMO FUNCIONA</div>
+  <h2>O que conta como cada movimento</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Movimento</th><th>Tecla</th><th>Regra (valores de fábrica)</th></tr></thead>
+    <tbody>
+      <tr><td>Pular</td><td><span class="kbd">Espaço</span> aperta e solta</td><td>Impulso para cima de pelo menos 0,50 m/s, seguido de 30 ms "sem peso" (força vertical abaixo de 0,35 g). Logo depois de levantar de uma agachada, exige 60 ms.</td></tr>
+      <tr><td>Agachar</td><td><span class="kbd">↓</span> segura</td><td>Já desceu 6 cm e ainda descendo a pelo menos 0,18 m/s. Se no fim da descida o total for menor que 9 cm, solta (era mergulho).</td></tr>
+      <tr><td>Levantar</td><td><span class="kbd">↓</span> solta</td><td>Subindo a 0,25 m/s, ou já subiu metade do que agachou (mínimo 8 cm). Por segurança, solta sozinho depois de 5 s.</td></tr>
+      <tr><td>Sacudir para os lados</td><td>nada</td><td>Com mais de 0,6 g de força lateral, a seta não é apertada nem solta até acalmar; acima de 1,5 g, o pulo também é bloqueado.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note"><b>O que o sensor não consegue separar:</b> com um único sensor na mão, levantar o controle rápido com os braços é igual a pular, e abaixar o controle com os braços é igual a agachar. Levantar de forma explosiva de uma agachada (20 cm em 0,3 s) também pode virar pulo. Para crianças, esses gestos costumam ser intuitivos.</p>
+</section>
+
+<section>
+  <div class="step">AJUSTE FINO</div>
+  <h2>Lendo os eventos</h2>
+  <p>Com o Serial Monitor aberto, cada ação gera uma linha do que foi detectado, seguida da linha da tecla (<code>&gt;&gt;</code>). As linhas que começam com <code>quase-</code> mostram movimentos que <b>não</b> dispararam, com o número que faltou. Um pulo e uma agachada ficam assim:</p>
+  <pre>[  12.30s] PULO       | impulso 1.00 m/s | 34 ms apos sair do chao
+[  12.30s]   &gt;&gt; ESPACO apertado   [enviada]
+[  12.42s]   &gt;&gt; ESPACO solto, ficou 120 ms   [enviada]
+[  12.50s]   pousou   | 205 ms no ar (~5 cm)
+[  14.21s] BAIXO      | descendo 0.63 m/s, ja 7 cm
+[  14.21s]   &gt;&gt; SETA BAIXO apertada   [enviada]
+[  14.49s]   agachado | desceu 21 cm (seta continua apertada)
+[  15.40s] SOBE       | subindo 0.33 m/s
+[  15.40s]   &gt;&gt; SETA BAIXO solta, ficou 1190 ms   [enviada]</pre>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Linha</th><th>O que significa / o que fazer</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">PULO | impulso 1.00 m/s | 34 ms apos sair do chao</td><td>Pulo aceito, com o tempo de resposta.</td></tr>
+      <tr><td class="mono">pousou | 205 ms no ar (~5 cm)</td><td>Tempo de voo e altura estimada.</td></tr>
+      <tr><td class="mono">quase-pulo | impulso 0.40 m/s (pulo_vel 0.50) | ...</td><td>Faltou impulso: baixe <code>pulo_vel</code> para perto do valor medido.</td></tr>
+      <tr><td class="mono">quase-pulo | ... forca min 0.42 g (ar_g 0.35)</td><td>Não ficou "sem peso" o bastante: suba <code>ar_g</code> um pouco acima do valor medido.</td></tr>
+      <tr><td class="mono">BAIXO | descendo 0.63 m/s, ja 7 cm</td><td>Agachar detectado; a linha seguinte é a seta sendo apertada.</td></tr>
+      <tr><td class="mono">agachado | desceu 21 cm (seta continua apertada)</td><td>Fim da descida: profundidade total estimada. A seta segue apertada.</td></tr>
+      <tr><td class="mono">mergulho | so desceu 8 cm (agacha_cm 9): solta a seta</td><td>Se era para agachar, baixe <code>agacha_cm</code> para abaixo do valor medido.</td></tr>
+      <tr><td class="mono">SOBE | subindo 0.33 m/s</td><td>Levantar detectado; a linha seguinte é a seta sendo solta, com quanto tempo ficou apertada. Se aparecer <code>tempo maximo</code>, ele não viu a subida (rode <code>sensor</code> se ainda não rodou).</td></tr>
+      <tr><td class="mono">quase-baixo | desceu 18 cm, mas so a 0.15 m/s (desce_vel 0.18)</td><td>Agachou devagar demais: baixe <code>desce_vel</code> (ex.: <code>desce_vel 0.12</code>).</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Parâmetros</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Nome</th><th>Padrão</th><th>Mais baixo</th><th>Mais alto</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">desce_cm</td><td class="mono">6</td><td>agacha mais rápido, mas pode abaixar antes do pulo</td><td>ignora mergulhos mais fundos, responde um pouco depois</td></tr>
+      <tr><td class="mono">agacha_cm</td><td class="mono">9</td><td>agachadas rasas contam</td><td>só agachadas fundas seguram a seta</td></tr>
+      <tr><td class="mono">desce_vel</td><td class="mono">0.18</td><td>reconhece agachar bem devagar</td><td>menos sensível a mexidas</td></tr>
+      <tr><td class="mono">sobe_vel</td><td class="mono">0.25</td><td>solta ao levantar devagar</td><td>mexer agachado não solta</td></tr>
+      <tr><td class="mono">pulo_vel</td><td class="mono">0.50</td><td>pulinhos fracos contam</td><td>menos pulo falso ao levantar o braço</td></tr>
+      <tr><td class="mono">ar_g</td><td class="mono">0.35</td><td>menos pulo falso ao levantar rápido</td><td>pulos com braço mexendo contam</td></tr>
+      <tr><td class="mono">ar_ms</td><td class="mono">30</td><td>pulo sai mais rápido</td><td>menos pulo falso</td></tr>
+      <tr><td class="mono">espaco_ms</td><td class="mono">120</td><td colspan="2">quanto tempo o Espaço fica apertado (suba se o jogo não perceber o pulo)</td></tr>
+      <tr><td class="mono">pouso_ms</td><td class="mono">350</td><td colspan="2">tempo ignorando o agachar depois do pouso (joelhos dobrando)</td></tr>
+      <tr><td class="mono">max_baixo_ms</td><td class="mono">5000</td><td colspan="2">segurança: solta a seta depois desse tempo</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Comandos</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Comando</th><th>Faz</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">teclas</td><td>testa o envio: Espaço 2× e seta para baixo por 2 s (clique antes na janela do jogo)</td></tr>
+      <tr><td class="mono">sensor</td><td>calibra o erro de fábrica do sensor (uma vez; 6 posições paradas)</td></tr>
+      <tr><td class="mono">cal</td><td>calibra os movimentos da criança e aplica sozinho</td></tr>
+      <tr><td class="mono">desfazer</td><td>volta os valores de antes da última <code>cal</code></td></tr>
+      <tr><td class="mono">ver</td><td>parâmetros, calibração do sensor e estado atual</td></tr>
+      <tr><td class="mono">desce_cm 10</td><td>muda um parâmetro e salva (vale para qualquer nome da tabela)</td></tr>
+      <tr><td class="mono">log 0 | 1 | 2</td><td>silêncio | eventos (padrão) | gráfico no Serial Plotter</td></tr>
+      <tr><td class="mono">padrao</td><td>volta os parâmetros de movimento aos valores de fábrica</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="step">COMO FOI TESTADO</div>
+  <h2>Resultados no simulador</h2>
+  <p>Não dá para testar com uma criança daqui, então escrevi um simulador que roda o mesmo código do algoritmo do firmware. Ele gera as leituras de um MPU6050 com defeitos reais: offset e escala por eixo, desvio e escala do giroscópio, ruído, quantização e tremor da mão. A amostragem tem atrasos aleatórios, como os que o Bluetooth causa. Foram 23 cenários × 30 sensores sorteados, segurando em ângulos sorteados.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Cenário (sensor calibrado)</th><th>Resultado</th><th>Resposta (mediana · pior)</th></tr></thead>
+    <tbody>
+      <tr><td>Pulo com mergulho, pulinho, pulo alto, 3 seguidos</td><td>todos detectados</td><td>Espaço 31–34 ms · 54 ms após decolar</td></tr>
+      <tr><td>Agachar normal (25 cm em 0,6 s, inclinando 20°)</td><td>detectado</td><td>seta 219 · 229 ms; solta 114 · 124 ms</td></tr>
+      <tr><td>Abaixar rápido (20 cm em 0,3 s)</td><td>detectado</td><td>seta 124 · 139 ms; solta 99 · 109 ms</td></tr>
+      <tr><td>Agachar devagar (1,2 s) / muito devagar (1,8 s)</td><td>detectado</td><td>seta 424 / 669 ms</td></tr>
+      <tr><td>Agachar inclinando o controle 45°</td><td>detectado</td><td>seta 254 ms; solta 144 ms</td></tr>
+      <tr><td>Agachar e pular de dentro do agachamento</td><td>os dois detectados</td><td>Espaço 64 ms após decolar</td></tr>
+      <tr><td>Parado, girar o controle ±60°, balançar os braços, andar no lugar, chacoalhar forte</td><td>nada disparou</td><td>—</td></tr>
+      <tr><td>Quicar no lugar (±3 cm)</td><td>apertos rápidos de seta (~50 ms) com os valores de fábrica</td><td>somem depois da <code>cal</code></td></tr>
+      <tr><td><b>Total</b></td><td><b>0 falhas em 690 testes</b></td><td>sem calibrar o sensor: 8 falhas e solturas até 2,2 s atrasadas</td></tr>
+    </tbody>
+  </table></div>
+  <p>O envio das teclas foi testado rodando o firmware inteiro com o Bluetooth e a TV/Mac simulados: conexão, ativação do teclado, comando <code>teclas</code>, botão BOOT e queda da conexão. Cada caso gerou a linha e o motivo esperados.</p>
+  <p class="note"><b>Limites do teste:</b> a simulação usa movimentos de criança modelados (curvas suaves, pulos balísticos), não gravações reais. O código foi compilado contra cabeçalhos com as assinaturas oficiais do core, mas não com o core de verdade. Espere ajustar algum parâmetro com a criança. Os logs <code>quase-</code> dizem qual.</p>
+</section>
+</div>
+
+
+<script>
+document.querySelectorAll('button.copy').forEach(function(b){
+  b.addEventListener('click',function(){
+    var el=document.getElementById(b.dataset.target), t=el.textContent;
+    function done(){b.textContent='Copiado';setTimeout(function(){b.textContent='Copiar';},1500);}
+    function fallback(){var r=document.createRange();r.selectNodeContents(el);var s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Selecionado: Cmd/Ctrl+C';}
+    try{navigator.clipboard.writeText(t).then(done,fallback);}catch(e){fallback();}
+  });
+});
+(function(){
+  var ns='http://www.w3.org/2000/svg';
+  function pin(g,x,y,label,on,cls,anchorX,anchor){
+    var c=document.createElementNS(ns,'circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',on?6:4.5);
+    c.setAttribute('fill',on?'#e8c766':'#8a948f');g.appendChild(c);
+    var t=document.createElementNS(ns,'text');t.setAttribute('x',anchorX);t.setAttribute('y',y+4);t.setAttribute('text-anchor',anchor);
+    t.setAttribute('class',cls+(on?' on':''));t.textContent=label;g.appendChild(t);
+  }
+  var right=['D23','D22','TXO','RXO','D21','D19','D18','D5','TX2','RX2','D4','D2','D15','GND','3V3'],used={D22:1,D21:1,GND:1,'3V3':1};
+  var g=document.getElementById('pins');
+  right.forEach(function(p,i){pin(g,205,50+i*26,p,used[p],'lbl',192,'end');});
+  var gy=['INT','AD0','XCL','XDA','SDA','SCL','GND','VCC'],gu={SDA:1,SCL:1,GND:1,VCC:1},g2=document.getElementById('gypins');
+  gy.forEach(function(p,i){pin(g2,440,110+i*26,p,gu[p],'gyl',454,'start');});
+})();
+</script>
+</body></html>
