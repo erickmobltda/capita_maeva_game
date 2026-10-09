@@ -1,5 +1,5 @@
 // =====================================================================
-//  Controle do Pulo v3 — ESP32 + MPU6050 (GY-521) como teclado Bluetooth
+//  Controle do Pulo v3.2 — ESP32 + MPU6050 (GY-521) como teclado Bluetooth
 //
 //  Pular   -> ESPAÇO, apertado logo que a criança sai do chão
 //  Agachar -> segura SETA PARA BAIXO; solta assim que ela começa a subir
@@ -17,8 +17,11 @@
 //      corrige o erro de fábrica de cada eixo do acelerômetro.
 //
 //  Serial Monitor (115200, final de linha "New Line"):
-//    ajuda | sensor | cal | ver | desfazer | padrao | log 0/1/2
+//    ajuda | teclas | sensor | cal | ver | desfazer | padrao | log 0/1/2
 //    <parametro> <valor>      ex.:  desce_vel 0.15
+//
+//  Botoes opcionais: D18 -> GND = ESPACO | D19 -> GND = SETA BAIXO (enquanto apertado).
+//  Funcionam junto com o movimento.
 //
 //  Só usa bibliotecas do core oficial da Espressif (arduino-esp32 3.3.8+).
 // =====================================================================
@@ -30,9 +33,12 @@
 #include <BLEServer.h>
 #include <BLEHIDDevice.h>
 #include <BLESecurity.h>
+#include <BLE2902.h>
 
 const char* BT_NAME = "Controle Pulo";
 const int PIN_SDA = 21, PIN_SCL = 22, PIN_BOOT = 0, PIN_LED = 2;
+const int PIN_BTN_PULO = 18;    // botao 1 -> ESPACO   (outra perna, na diagonal, no GND)
+const int PIN_BTN_BAIXO = 19;   // botao 2 -> SETA BAIXO enquanto apertado
 
 // Saídas usadas pelo algoritmo (implementadas mais abaixo)
 void keySpace(bool on);
@@ -70,7 +76,7 @@ void printParams() {
 }
 
 int logMode = 1;   // 0 silencio | 1 eventos | 2 grafico (Serial Plotter)
-#define LOG(...) do { if (logMode == 1) Serial.printf(__VA_ARGS__); } while (0)
+#define LOG(...) do { if (logMode == 1) { Serial.printf("[%7.2fs] ", millis() / 1000.0f); Serial.printf(__VA_ARGS__); } } while (0)
 
 // ---------------- Estado ----------------
 const float GRAV = 9.81f, DEG2RAD = 0.01745329f;
@@ -218,9 +224,9 @@ void jumpStep(unsigned long now) {
         flTake >= P(PULO_VEL) && now - lastJump >= 250 && agit < 2.5f * AGIT_MAX) {
       flFired = true;
       jpState = JP_AIR; takeoffAt = lowSince; lastJump = now;
+      LOG("PULO       | impulso %.2f m/s | %lu ms apos sair do chao\n", flTake, now - lowSince);
       if (crState == CR_DOWN) { crState = CR_UP; keyDown(false); }
       keySpace(true); spaceByJump = true; spaceSince = now;
-      LOG("PULO       | impulso %.2f m/s | %lu ms apos sair do chao\n", flTake, now - lowSince);
     }
   } else if (jpState == JP_AIR) {
     if ((fv > 0.9f && now - takeoffAt > 60) || now - takeoffAt > 800) { jpState = JP_LANDED; landedAt = now; }
@@ -237,9 +243,9 @@ bool dEp = false, dEpPressed = false; float dEpMinV = 0, dEpDepth = 0;
 bool uEp = false; float uEpMaxV = 0, uEpH = 0;
 
 void releaseDown(const char* why, unsigned long now) {
+  LOG("SOBE       | %s\n", why);
   crState = CR_UP; crCnt = 0; keyDown(false);
   if (now - crSince >= 300) riseGuardUntil = now + 500;   // so depois de agachada de verdade
-  LOG("SOBE       | %s | ficou %lu ms abaixado\n", why, now - crSince);
 }
 
 void crouchStep(unsigned long now) {
@@ -272,8 +278,8 @@ void crouchStep(unsigned long now) {
       if (++crCnt >= 3) {                       // 15 ms de confirmacao
         crState = CR_DOWN; crCnt = 0; crSince = now; crDescentDone = false; crMaxDepth = depth;
         dEpPressed = true;
-        keyDown(true);
         LOG("BAIXO      | descendo %.2f m/s, ja %.0f cm\n", -vel, depth * 100);
+        keyDown(true);
       }
     } else crCnt = 0;
     return;
@@ -285,11 +291,11 @@ void crouchStep(unsigned long now) {
     if (vel >= -0.03f) {
       crDescentDone = true;
       if (crMaxDepth * 100 < P(AGACHA_CM)) {
+        LOG("  mergulho | so desceu %.0f cm (agacha_cm %.0f): solta a seta\n", crMaxDepth * 100, P(AGACHA_CM));
         crState = CR_UP; crCnt = 0; keyDown(false);
-        LOG("  solto    | so desceu %.0f cm (agacha_cm %.0f): era mergulho\n", crMaxDepth * 100, P(AGACHA_CM));
         return;
       }
-      LOG("  agachado | desceu %.0f cm\n", crMaxDepth * 100);
+      LOG("  agachado | desceu %.0f cm (seta continua apertada)\n", crMaxDepth * 100);
     }
   }
   if (vel > P(SOBE_VEL) && agit < AGIT_MAX) {
@@ -639,13 +645,21 @@ const uint8_t KEY_SPACE = 0x2C, KEY_DOWN = 0x51;   // HID Usage Tables, pagina K
 
 BLEHIDDevice* hid;
 BLECharacteristic* inputKeys;
-bool connected = false, spaceDown = false, arrowDown = false;
+#if defined(CONFIG_BLUEDROID_ENABLED)
+BLE2902* cccd = nullptr;                 // a TV/Mac liga as notificacoes aqui quando ativa o teclado
+#endif
+volatile bool connected = false;
+bool spaceDown = false, arrowDown = false;
+unsigned long spaceAt = 0, downAt = 0;
+uint8_t spaceSrc = 0, downSrc = 0;       // quem esta segurando cada tecla (movimento, botoes...)
+volatile int notifyStatus = -1;          // resultado do ultimo envio, informado pela biblioteca BLE
+volatile uint32_t notifyCode = 0;
+unsigned long keyTestT0 = 0;             // teste de teclas em andamento (0 = nao)
 
 class ServerCallbacks : public BLEServerCallbacks {
-  void onConnect(BLEServer*) { connected = true; Serial.println("Bluetooth: conectado"); }
+  void onConnect(BLEServer*) { connected = true; }
   void onDisconnect(BLEServer*) {
-    connected = false; spaceDown = false; arrowDown = false;
-    Serial.println("Bluetooth: desconectado, anunciando de novo");
+    connected = false; spaceDown = false; arrowDown = false; spaceSrc = 0; downSrc = 0;
     BLEDevice::startAdvertising();
   }
 };
@@ -653,29 +667,128 @@ class ServerCallbacks : public BLEServerCallbacks {
 class SecurityCallbacks : public BLESecurityCallbacks {
   bool onSecurityRequest() { return true; }
 #if defined(CONFIG_BLUEDROID_ENABLED)
-  void onAuthenticationComplete(esp_ble_auth_cmpl_t a) { Serial.println(a.success ? "Pareado!" : "Falha no pareamento"); }
+  void onAuthenticationComplete(esp_ble_auth_cmpl_t a) { Serial.println(a.success ? "Bluetooth: pareado" : "Bluetooth: FALHA no pareamento"); }
 #elif defined(CONFIG_NIMBLE_ENABLED)
-  void onAuthenticationComplete(ble_gap_conn_desc* d) { Serial.println(d->sec_state.encrypted ? "Pareado!" : "Falha no pareamento"); }
+  void onAuthenticationComplete(ble_gap_conn_desc* d) { Serial.println(d->sec_state.encrypted ? "Bluetooth: pareado" : "Bluetooth: FALHA no pareamento"); }
 #endif
   uint32_t onPassKeyRequest() { return 0; }
   void onPassKeyNotify(uint32_t) {}
   bool onConfirmPIN(uint32_t) { return true; }
 };
 
-void sendKeys() {
-  if (!connected) return;
+class KeyNotifyCallbacks : public BLECharacteristicCallbacks {
+  void onStatus(BLECharacteristic*, Status s, uint32_t code) override { notifyStatus = (int)s; notifyCode = code; }
+};
+
+// 0 desconectado | 1 conectado, mas a TV/Mac ainda nao ativou o teclado | 2 teclado ativo
+int kbState() {
+  if (!connected) return 0;
+#if defined(CONFIG_BLUEDROID_ENABLED)
+  if (cccd != nullptr && !cccd->getNotifications()) return 1;
+#endif
+  return 2;
+}
+const char* kbText(int st) {
+  return st == 0 ? "DESCONECTADO - conecte \"Controle Pulo\" no Bluetooth da TV ou do Mac"
+       : st == 1 ? "conectado, esperando a TV/Mac ativar o teclado..."
+                 : "TECLADO ATIVO - as teclas vao para a janela em foco na TV/Mac";
+}
+
+// Envia o estado das teclas e devolve o que aconteceu (para o log)
+const char* sendKeys() {
+  static char buf[64];
+  bool calibrating = calPhase != CAL_OFF || scActive;
   KeyReport r;
   memset(&r, 0, sizeof(r));
   int i = 0;
-  if (calPhase == CAL_OFF && !scActive) {   // calibrando: nao aperta nada no jogo
+  if (!calibrating) {                    // calibrando: manda tudo solto
     if (spaceDown) r.keys[i++] = KEY_SPACE;
     if (arrowDown) r.keys[i++] = KEY_DOWN;
   }
+  if (!connected) return "NAO enviada: Bluetooth desconectado";
+  notifyStatus = -1;
   inputKeys->setValue((uint8_t*)&r, sizeof(r));
   inputKeys->notify();
+  if (calibrating) return "NAO enviada: calibrando, teclas desligadas";
+  switch (notifyStatus) {
+    case BLECharacteristicCallbacks::SUCCESS_NOTIFY:        return "enviada";
+    case BLECharacteristicCallbacks::ERROR_NOTIFY_DISABLED:
+    case BLECharacteristicCallbacks::ERROR_NO_SUBSCRIBER:   return "NAO enviada: a TV/Mac ainda nao ativou o teclado";
+    case BLECharacteristicCallbacks::ERROR_NO_CLIENT:       return "NAO enviada: Bluetooth desconectado";
+    case -1:                                                return "enviada (sem confirmacao)";
+    default:
+      snprintf(buf, sizeof(buf), "NAO enviada: erro do Bluetooth (%d/%lu)", notifyStatus, (unsigned long)notifyCode);
+      return buf;
+  }
 }
-void keySpace(bool on) { if (spaceDown != on) { spaceDown = on; sendKeys(); } }
-void keyDown(bool on) { if (arrowDown != on) { arrowDown = on; sendKeys(); } }
+
+// Cada tecla pode ser apertada por varias fontes ao mesmo tempo (movimento, botoes, BOOT, teste).
+// Ela fica apertada enquanto QUALQUER fonte estiver apertando.
+enum { SRC_MOV = 1, SRC_BOOT = 2, SRC_BTN = 4, SRC_TEST = 8 };
+
+void setKey(bool isSpace, uint8_t src, bool on, const char* origem) {
+  uint8_t& m = isSpace ? spaceSrc : downSrc;
+  bool was = m != 0;
+  m = on ? (m | src) : (m & ~src);
+  bool is = m != 0;
+  if (was == is) return;                 // outra fonte ja segurava a tecla
+  bool& st = isSpace ? spaceDown : arrowDown;
+  unsigned long& at = isSpace ? spaceAt : downAt;
+  st = is;
+  unsigned long now = millis();
+  const char* res = sendKeys();
+  const char* nome = isSpace ? "ESPACO" : "SETA BAIXO";
+  if (is) { at = now; LOG("  >> %s %s%s   [%s]\n", nome, isSpace ? "apertado" : "apertada", origem, res); }
+  else LOG("  >> %s %s, ficou %lu ms   [%s]\n", nome, isSpace ? "solto" : "solta", now - at, res);
+}
+void releaseAllKeys() {
+  if (spaceSrc) { spaceSrc = SRC_TEST; setKey(true, SRC_TEST, false, ""); }
+  if (downSrc) { downSrc = SRC_TEST; setKey(false, SRC_TEST, false, ""); }
+}
+// Chamadas pelo algoritmo (ignoradas durante o teste de teclas)
+void keySpace(bool on) { if (!keyTestT0) setKey(true, SRC_MOV, on, ""); }
+void keyDown(bool on) { if (!keyTestT0) setKey(false, SRC_MOV, on, ""); }
+
+// ---------------- Teste de teclas (comando "teclas") ----------------
+struct TestStep { unsigned long at; bool space; bool on; };
+const TestStep KEYTEST[] = {
+  {5000, true, true},  {5150, true, false},     // ESPACO
+  {6000, true, true},  {6150, true, false},     // ESPACO
+  {7000, false, true}, {9000, false, false},    // SETA BAIXO segurada 2 s
+};
+const int KEYTEST_N = sizeof(KEYTEST) / sizeof(KEYTEST[0]);
+int keyTestStep = 0, keyTestCount = -1;
+
+void keyTestStart() {
+  if (calPhase != CAL_OFF || scActive) { Serial.println("Espere a calibracao terminar."); return; }
+  releaseAllKeys();
+  logMode = 1;
+  keyTestT0 = millis(); if (!keyTestT0) keyTestT0 = 1;
+  keyTestStep = 0; keyTestCount = -1;
+  Serial.printf("\n######## TESTE DE TECLAS ########\nBluetooth: %s\n", kbText(kbState()));
+  Serial.println("Clique AGORA na janela do jogo (ou no testador do guia). Em 5 s:");
+  Serial.println("ESPACO 2 vezes e depois SETA BAIXO segurada por 2 s.");
+}
+
+void keyTestTick() {
+  if (!keyTestT0) return;
+  unsigned long t = millis() - keyTestT0;
+  if (t < 5000) {
+    int c = 5 - (int)(t / 1000);
+    if (c != keyTestCount) { keyTestCount = c; Serial.printf("  %d...\n", c); }
+    return;
+  }
+  while (keyTestStep < KEYTEST_N && t >= KEYTEST[keyTestStep].at) {
+    const TestStep& st = KEYTEST[keyTestStep++];
+    setKey(st.space, SRC_TEST, st.on, " (teste)");
+  }
+  if (keyTestStep >= KEYTEST_N) {
+    keyTestT0 = 0;
+    Serial.println("Teste concluido. O personagem pulou 2 vezes e abaixou por 2 s?");
+    Serial.println("  - Se as linhas dizem [enviada] e nada aconteceu: o foco nao estava na janela do jogo.");
+    Serial.println("  - Se dizem [NAO enviada: ...]: o motivo esta escrito na propria linha.");
+  }
+}
 
 void bleInit() {
   BLEDevice::init(BT_NAME);
@@ -691,6 +804,10 @@ void bleInit() {
   hid->hidInfo(0x00, 0x01);
   hid->reportMap((uint8_t*)hidReportDescriptor, sizeof(hidReportDescriptor));
   inputKeys = hid->inputReport(1);
+  inputKeys->setCallbacks(new KeyNotifyCallbacks());
+#if defined(CONFIG_BLUEDROID_ENABLED)
+  cccd = (BLE2902*)inputKeys->getDescriptorByUUID(BLEUUID((uint16_t)0x2902));
+#endif
   hid->outputReport(1);
   hid->setBatteryLevel(100);
   hid->startServices();
@@ -779,6 +896,7 @@ void sensorBootCal() {
 // ---------------- Comandos ----------------
 void printHelp() {
   Serial.println("\nComandos (Serial Monitor 115200, 'New Line'):");
+  Serial.println("  teclas              testa o envio: ESPACO 2x e SETA BAIXO 2 s (clique antes na janela do jogo)");
   Serial.println("  sensor              calibra o erro de fabrica do sensor (UMA vez; 6 posicoes paradas)");
   Serial.println("  cal                 calibra os movimentos da crianca (parado, agachar, pular) e aplica");
   Serial.println("  desfazer            volta os valores de antes da ultima 'cal'");
@@ -786,6 +904,8 @@ void printHelp() {
   Serial.println("  <nome> <valor>      muda um parametro. Ex.: desce_vel 0.15");
   Serial.println("  log 0 | 1 | 2       silencio | eventos (padrao) | grafico (Serial Plotter)");
   Serial.println("  padrao              volta os parametros de movimento aos valores de fabrica");
+  Serial.println("Lembrete: as teclas vao para a janela EM FOCO. Depois de digitar um comando aqui,");
+  Serial.println("clique na janela do jogo antes de se mexer (o Serial Monitor continua mostrando o log).");
 }
 
 void printStatus() {
@@ -794,9 +914,9 @@ void printStatus() {
                 accCalOk ? "calibrado" : "SEM calibracao de fabrica (rode 'sensor')",
                 accOff[0], accOff[1], accOff[2], accScl[0], accScl[1], accScl[2]);
   Serial.printf("Parado mede %.3f g | giroscopio parado (%.1f, %.1f, %.1f) graus/s\n", g0, gBias[0], gBias[1], gBias[2]);
-  Serial.printf("Agora: forca vertical %.2f g | velocidade %.2f m/s | %s | %s | Bluetooth %s\n",
-                fv, vel, still ? "parado" : "mexendo", crState == CR_DOWN ? "ABAIXADO" : "em pe",
-                connected ? "conectado" : "desconectado");
+  Serial.printf("Agora: forca vertical %.2f g | velocidade %.2f m/s | %s | %s\n",
+                fv, vel, still ? "parado" : "mexendo", crState == CR_DOWN ? "ABAIXADO" : "em pe");
+  Serial.printf("Bluetooth: %s\n", kbText(kbState()));
 }
 
 void handleCommand(String cmd) {
@@ -808,6 +928,7 @@ void handleCommand(String cmd) {
   arg.trim();
   if (w == "ajuda" || w == "?" || w == "help") printHelp();
   else if (w == "ver" || w == "params") printStatus();
+  else if (w == "teclas" || w == "teste") keyTestStart();
   else if (w == "sensor") { calPhase = CAL_OFF; calRec = false; sensorCalStart(millis()); }
   else if (w == "cal") {
     if (scActive) Serial.println("Termine primeiro a calibracao do sensor (ou reinicie a placa).");
@@ -839,8 +960,10 @@ void setup() {
   Serial.begin(115200);
   pinMode(PIN_LED, OUTPUT);
   pinMode(PIN_BOOT, INPUT_PULLUP);
+  pinMode(PIN_BTN_PULO, INPUT_PULLUP);    // sem botao ligado, o pino fica em 1: nada acontece
+  pinMode(PIN_BTN_BAIXO, INPUT_PULLUP);
   delay(300);
-  Serial.println("\n=== Controle do Pulo v3 ===");
+  Serial.println("\n=== Controle do Pulo v3.2 ===");
   loadParams();
   mpuInit();
   bleInit();
@@ -850,7 +973,7 @@ void setup() {
 
 void loop() {
   static uint32_t lastUs = 0;
-  static bool bootWas = false;
+  static int lastKb = -1;
   static String line;
 
   while (Serial.available()) {
@@ -859,14 +982,37 @@ void loop() {
     else if (line.length() < 64) line += c;
   }
 
-  bool boot = digitalRead(PIN_BOOT) == LOW;              // BOOT = Espaco
-  if (boot != bootWas) { bootWas = boot; keySpace(boot); }
+  int kb = kbState();                                    // avisa quando o Bluetooth muda
+  if (kb != lastKb) { lastKb = kb; Serial.printf("Bluetooth: %s\n", kbText(kb)); }
+
+  // Botoes (com anti-repique de 30 ms): BOOT e botao 1 = ESPACO, botao 2 = SETA BAIXO
+  struct Btn { int pin; bool isSpace; uint8_t src; const char* nome; bool was; unsigned long t; };
+  static Btn btns[] = {
+    {PIN_BOOT, true, SRC_BOOT, " (botao BOOT)", false, 0},
+    {PIN_BTN_PULO, true, SRC_BTN, " (botao 1)", false, 0},
+    {PIN_BTN_BAIXO, false, SRC_BTN, " (botao 2)", false, 0},
+  };
+  for (Btn& b : btns) {
+    bool on = digitalRead(b.pin) == LOW;
+    if (on != b.was && millis() - b.t > 30) {
+      b.was = on; b.t = millis();
+      if (!keyTestT0) setKey(b.isSpace, b.src, on, b.nome);
+    }
+  }
+  keyTestTick();
 
   uint32_t nowUs = micros();
   if (nowUs - lastUs < 5000) return;                     // 200 amostras por segundo
   float dt = (nowUs - lastUs) * 1e-6f;
   lastUs = nowUs;
   if (dt > 0.02f) dt = 0.02f;
+
+  // LED: pisca rapido = calibrando o sensor | piscada curta a cada 1 s = teclado NAO ativo
+  //      aceso = tecla apertada | apagado = pronto
+  bool led;
+  if (scActive) led = (millis() / 250) % 2;
+  else led = spaceDown || arrowDown || (kb != 2 && millis() % 1000 < 100);
+  digitalWrite(PIN_LED, led ? HIGH : LOW);
   if (!mpuOk) return;
 
   float ax, ay, az, gx, gy, gz;
@@ -877,6 +1023,4 @@ void loop() {
   }
   fails = 0;
   processSample(ax, ay, az, gx, gy, gz, dt, millis());
-  if (scActive) digitalWrite(PIN_LED, (millis() / 250) % 2);   // piscando: calibrando o sensor
-  else digitalWrite(PIN_LED, (arrowDown || spaceDown) ? HIGH : LOW);
 }

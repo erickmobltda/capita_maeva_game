@@ -6,10 +6,10 @@ Ele também pode ser jogado **com o corpo**: um controle feito com ESP32 e um se
 
 ## Como jogar
 
-| Ação | Teclado | Celular | Controle de movimento |
-|---|---|---|---|
-| Pular | `Espaço` | botão na tela | pular |
-| Abaixar | `↓` (segurar) | botão na tela | agachar (e levantar para soltar) |
+| Ação | Teclado | Celular | Controle de movimento | Botões do controle |
+|---|---|---|---|---|
+| Pular | `Espaço` | botão na tela | pular | botão 1 |
+| Abaixar | `↓` (segurar) | botão na tela | agachar (e levantar para soltar) | botão 2 (segurar) |
 
 Para jogar, abra o `index.html` no navegador. Se o GitHub Pages estiver ativado neste repositório, o jogo fica em `https://erickmobltda.github.io/capita_maeva_game/`.
 
@@ -28,6 +28,7 @@ O passo a passo completo está no [guia de montagem](controle/guia-controle-pulo
 - Placa ESP32 DevKit (ESP32 clássico, 30 pinos)
 - Módulo GY-521 (MPU6050)
 - 4 jumpers fêmea-fêmea
+- Opcional: 2 chaves táteis de 4 pernas e uma protoboard
 - Cabo USB de dados (para gravar)
 - Power bank pequeno e um case firme
 
@@ -41,6 +42,13 @@ O passo a passo completo está no [guia de montagem](controle/guia-controle-pulo
 | SDA | D21 |
 
 Prenda o sensor firme dentro do case. Se ele balançar, mede o próprio chacoalho.
+
+**Botões (opcional).** Cada botão vai num pino e no GND, usando pernas em diagonal. Não precisa de resistor, porque o código liga o pull-up interno. Os botões funcionam junto com o movimento.
+
+| Botão | Uma perna | Perna da diagonal | Tecla |
+|---|---|---|---|
+| Botão 1 | D18 | GND | `Espaço` |
+| Botão 2 | D19 | GND | `↓` enquanto estiver apertado |
 
 ### Gravar o firmware
 

@@ -9,7 +9,7 @@
   --bg:#f3f5f1; --surface:#ffffff; --fg:#1a2420; --muted:#5b6b63; --line:#d5ddd7;
   --accent:#1f7a4d; --accent-soft:#e1f0e7; --warn:#a85d00; --warn-soft:#fbefdc;
   --code-bg:#14201b; --code-fg:#dbe8e0;
-  --w-red:#d0342c; --w-black:#2b2b2b; --w-yellow:#d9a400; --w-blue:#2a6fd6;
+  --w-red:#d0342c; --w-black:#2b2b2b; --w-yellow:#d9a400; --w-blue:#2a6fd6; --w-green:#23935a; --w-purple:#8b4fd6;
   --pcb:#16241e; --pcb-line:#3a5248; --pcb-text:#c7d6ce; --chip:#a9b1ad; --gy:#2d5ea8;
   --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
   --f-body:"Atkinson Hyperlegible",ui-sans-serif,system-ui,sans-serif;
@@ -85,9 +85,10 @@ pre{margin:0;background:var(--code-bg);color:var(--code-fg);font:12.5px/1.55 var
 </header>
 
 <section>
-  <div class="step">VERSÃO 3.1</div>
+  <div class="step">VERSÃO 3.2</div>
   <h2>O que mudou</h2>
   <ul>
+    <li><b>v3.2: dois botões opcionais</b> (passo 2b). Botão 1 = <span class="kbd">Espaço</span>, botão 2 = <span class="kbd">↓</span> enquanto estiver apertado. Funcionam junto com o movimento; se os dois mandarem a mesma tecla ao mesmo tempo, ela vira um aperto só.</li>
     <li><b>v3.1: cada tecla aparece no log</b> com o resultado do envio que a própria biblioteca Bluetooth informa: <code>[enviada]</code> ou o motivo de não ter ido. O log também avisa o estado do teclado (desconectado, esperando ativar, ativo). Há ainda o comando <code>teclas</code>, um testador nesta página e o LED de status (passo 6b).</li>
     <li><b>Usa o giroscópio.</b> Antes só o acelerômetro era usado, e inclinar o controle ao agachar virava movimento falso. Agora um filtro Mahony sabe onde é "para cima" a cada 5 ms.</li>
     <li><b>Corrige o erro de fábrica do sensor</b> com o comando <code>sensor</code>, feito uma vez só. O datasheet do MPU6050 admite até ±50 mg nos eixos X/Y e ±80 mg no Z. Quando o controle gira, esse erro vira "velocidade fantasma".</li>
@@ -127,7 +128,7 @@ pre{margin:0;background:var(--code-bg);color:var(--code-fg);font:12.5px/1.55 var
   <h2>Ligação — 4 fios</h2>
   <p>Ligue direto, pino a pino, com os jumpers fêmea‑fêmea, com o USB <b>desconectado</b>.</p>
   <div class="diagram">
-  <svg viewBox="0 0 640 470" role="img" aria-label="ESP32: 3V3 ao VCC, GND ao GND, D22 ao SCL, D21 ao SDA do GY-521">
+  <svg viewBox="0 0 640 575" role="img" aria-label="ESP32: 3V3 ao VCC, GND ao GND, D22 ao SCL, D21 ao SDA do GY-521; botao 1 entre D18 e GND, botao 2 entre D19 e GND">
     <style>
       .lbl{font:11px var(--f-mono);fill:var(--pcb-text)}
       .lbl.on{fill:#ffffff;font-weight:700}
@@ -154,19 +155,69 @@ pre{margin:0;background:var(--code-bg);color:var(--code-fg);font:12.5px/1.55 var
     <path class="w" stroke="var(--w-red)" d="M205 414 H380 V292 H440"/>
     <text x="440" y="350" style="font:11px var(--f-body);fill:var(--muted)">A posição do módulo não importa:</text>
     <text x="440" y="366" style="font:11px var(--f-body);fill:var(--muted)">siga os nomes impressos nos pinos.</text>
+    <path class="w" stroke="var(--w-black)" d="M230 388 V520 H612"/>
+    <circle cx="230" cy="388" r="5" fill="var(--w-black)"/>
+    <path class="w" stroke="var(--w-green)" d="M205 206 H255 V436 H472"/>
+    <path class="w" stroke="var(--w-purple)" d="M205 180 H270 V426 H552 V436"/>
+    <path class="w" stroke="var(--w-black)" d="M528 464 V520"/>
+    <path class="w" stroke="var(--w-black)" d="M608 464 V520"/>
+    <g>
+      <line x1="472" y1="436" x2="528" y2="436" stroke="var(--chip)" stroke-width="3"/>
+      <line x1="472" y1="464" x2="528" y2="464" stroke="var(--chip)" stroke-width="3"/>
+      <rect x="480" y="430" width="40" height="40" rx="4" fill="var(--w-black)"/>
+      <circle cx="500" cy="450" r="11" fill="var(--chip)"/>
+      <circle cx="472" cy="436" r="4" fill="#e8c766"/><circle cx="528" cy="464" r="4" fill="#e8c766"/>
+      <text x="500" y="546" text-anchor="middle" class="ttl">Botão 1</text>
+      <text x="500" y="562" text-anchor="middle" style="font:11px var(--f-body);fill:var(--muted)">Espaço · D18</text>
+    </g>
+    <g>
+      <line x1="552" y1="436" x2="608" y2="436" stroke="var(--chip)" stroke-width="3"/>
+      <line x1="552" y1="464" x2="608" y2="464" stroke="var(--chip)" stroke-width="3"/>
+      <rect x="560" y="430" width="40" height="40" rx="4" fill="var(--w-black)"/>
+      <circle cx="580" cy="450" r="11" fill="var(--chip)"/>
+      <circle cx="552" cy="436" r="4" fill="#e8c766"/><circle cx="608" cy="464" r="4" fill="#e8c766"/>
+      <text x="580" y="546" text-anchor="middle" class="ttl">Botão 2</text>
+      <text x="580" y="562" text-anchor="middle" style="font:11px var(--f-body);fill:var(--muted)">↓ · D19</text>
+    </g>
+    <text x="300" y="512" style="font:11px var(--f-body);fill:var(--muted)">GND (trilho azul da protoboard)</text>
+    <text x="440" y="400" style="font:11px var(--f-body);fill:var(--muted)">Botões: pernas em diagonal</text>
   </svg>
   </div>
   <div class="table-wrap"><table>
-    <thead><tr><th>Fio</th><th>ESP32</th><th>GY‑521</th><th>Função</th></tr></thead>
+    <thead><tr><th>Fio</th><th>ESP32</th><th>Liga em</th><th>Função</th></tr></thead>
     <tbody>
       <tr><td><span class="dot" style="background:var(--w-red)"></span>vermelho</td><td class="mono">3V3</td><td class="mono">VCC</td><td>alimentação 3,3 V</td></tr>
       <tr><td><span class="dot" style="background:var(--w-black)"></span>preto</td><td class="mono">GND</td><td class="mono">GND</td><td>terra (use o GND do lado direito, junto do 3V3)</td></tr>
       <tr><td><span class="dot" style="background:var(--w-yellow)"></span>amarelo</td><td class="mono">D22</td><td class="mono">SCL</td><td>clock I²C</td></tr>
       <tr><td><span class="dot" style="background:var(--w-blue)"></span>azul</td><td class="mono">D21</td><td class="mono">SDA</td><td>dados I²C</td></tr>
+      <tr><td><span class="dot" style="background:var(--w-green)"></span>verde</td><td class="mono">D18</td><td class="mono">botão 1</td><td>Espaço (opcional, passo 2b)</td></tr>
+      <tr><td><span class="dot" style="background:var(--w-purple)"></span>roxo</td><td class="mono">D19</td><td class="mono">botão 2</td><td>seta para baixo (opcional, passo 2b)</td></tr>
+      <tr><td><span class="dot" style="background:var(--w-black)"></span>preto</td><td class="mono">GND</td><td class="mono">perna diagonal dos 2 botões</td><td>pelo trilho azul da protoboard</td></tr>
     </tbody>
   </table></div>
   <p class="tip"><b>Importante:</b> prenda o GY‑521 <b>firme</b> no case, com fita dupla face grossa ou cola quente, sem folga. Um sensor que balança dentro do case mede o próprio chacoalho, e isso nenhum código corrige. Depois de calibrar (passo 5), não mude o sensor de lugar.</p>
   <p class="note"><b>Não confirmado:</b> o GY‑521 é genérico e não tem documentação oficial. Alimentar pelo 3V3 é o uso comum da comunidade.</p>
+</section>
+
+<section>
+  <div class="step">PASSO 2b · OPCIONAL</div>
+  <h2>Dois botões</h2>
+  <p>Use chaves táteis de 4 pernas. As 4 pernas são 2 pares ligados por dentro; usando pernas <b>em diagonal</b>, não tem como errar o par. Não precisa de resistor: o código liga o pull-up interno do ESP32.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Botão</th><th>Uma perna</th><th>Perna da diagonal</th><th>Tecla</th></tr></thead>
+    <tbody>
+      <tr><td>Botão 1</td><td class="mono">D18</td><td class="mono">GND</td><td><span class="kbd">Espaço</span> (pular)</td></tr>
+      <tr><td>Botão 2</td><td class="mono">D19</td><td class="mono">GND</td><td><span class="kbd">↓</span> enquanto estiver apertado</td></tr>
+    </tbody>
+  </table></div>
+  <ol>
+    <li>Encaixe cada botão <b>atravessando o canal do meio</b> da protoboard, com duas pernas de cada lado.</li>
+    <li>Ligue um jumper de um <b>GND do ESP32</b> até o trilho azul (−) da protoboard.</li>
+    <li>Na coluna de uma perna do botão, um jumper até <b>D18</b> (botão 1) ou <b>D19</b> (botão 2).</li>
+    <li>Na coluna da perna <b>na diagonal</b> (do outro lado do canal), um jumper até o trilho azul (GND).</li>
+  </ol>
+  <p>Os pinos D21/D22 são do sensor, e D0, D2, D12 e D15 atrapalham na hora de ligar ou gravar; por isso D18 e D19. Sem os botões ligados, nada muda: os pinos ficam em repouso.</p>
+  <p class="tip">Para testar, aperte os botões com o Serial Monitor aberto. Deve aparecer <code>&gt;&gt; ESPACO apertado (botao 1)   [enviada]</code> e <code>&gt;&gt; SETA BAIXO apertada (botao 2)   [enviada]</code>.</p>
 </section>
 
 <section>
@@ -185,7 +236,7 @@ pre{margin:0;background:var(--code-bg);color:var(--code-fg);font:12.5px/1.55 var
   <p>Substitua todo o conteúdo do sketch <code>controle_pulo</code> pelo código abaixo. É um arquivo só e usa apenas bibliotecas do pacote oficial da Espressif.</p>
   <div class="code-head"><h3>controle_pulo.ino (v3)</h3><button class="copy" type="button" data-target="c1">Copiar</button></div>
   <pre id="c1">// =====================================================================
-//  Controle do Pulo v3.1 — ESP32 + MPU6050 (GY-521) como teclado Bluetooth
+//  Controle do Pulo v3.2 — ESP32 + MPU6050 (GY-521) como teclado Bluetooth
 //
 //  Pular   -&gt; ESPAÇO, apertado logo que a criança sai do chão
 //  Agachar -&gt; segura SETA PARA BAIXO; solta assim que ela começa a subir
@@ -206,6 +257,9 @@ pre{margin:0;background:var(--code-bg);color:var(--code-fg);font:12.5px/1.55 var
 //    ajuda | teclas | sensor | cal | ver | desfazer | padrao | log 0/1/2
 //    &lt;parametro&gt; &lt;valor&gt;      ex.:  desce_vel 0.15
 //
+//  Botoes opcionais: D18 -&gt; GND = ESPACO | D19 -&gt; GND = SETA BAIXO (enquanto apertado).
+//  Funcionam junto com o movimento.
+//
 //  Só usa bibliotecas do core oficial da Espressif (arduino-esp32 3.3.8+).
 // =====================================================================
 #include &lt;Arduino.h&gt;
@@ -220,6 +274,8 @@ pre{margin:0;background:var(--code-bg);color:var(--code-fg);font:12.5px/1.55 var
 
 const char* BT_NAME = &quot;Controle Pulo&quot;;
 const int PIN_SDA = 21, PIN_SCL = 22, PIN_BOOT = 0, PIN_LED = 2;
+const int PIN_BTN_PULO = 18;    // botao 1 -&gt; ESPACO   (outra perna, na diagonal, no GND)
+const int PIN_BTN_BAIXO = 19;   // botao 2 -&gt; SETA BAIXO enquanto apertado
 
 // Saídas usadas pelo algoritmo (implementadas mais abaixo)
 void keySpace(bool on);
@@ -832,6 +888,7 @@ BLE2902* cccd = nullptr;                 // a TV/Mac liga as notificacoes aqui q
 volatile bool connected = false;
 bool spaceDown = false, arrowDown = false;
 unsigned long spaceAt = 0, downAt = 0;
+uint8_t spaceSrc = 0, downSrc = 0;       // quem esta segurando cada tecla (movimento, botoes...)
 volatile int notifyStatus = -1;          // resultado do ultimo envio, informado pela biblioteca BLE
 volatile uint32_t notifyCode = 0;
 unsigned long keyTestT0 = 0;             // teste de teclas em andamento (0 = nao)
@@ -839,7 +896,7 @@ unsigned long keyTestT0 = 0;             // teste de teclas em andamento (0 = na
 class ServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer*) { connected = true; }
   void onDisconnect(BLEServer*) {
-    connected = false; spaceDown = false; arrowDown = false;
+    connected = false; spaceDown = false; arrowDown = false; spaceSrc = 0; downSrc = 0;
     BLEDevice::startAdvertising();
   }
 };
@@ -902,25 +959,32 @@ const char* sendKeys() {
   }
 }
 
-void applySpace(bool on, const char* origem) {
-  if (spaceDown == on) return;
-  spaceDown = on;
+// Cada tecla pode ser apertada por varias fontes ao mesmo tempo (movimento, botoes, BOOT, teste).
+// Ela fica apertada enquanto QUALQUER fonte estiver apertando.
+enum { SRC_MOV = 1, SRC_BOOT = 2, SRC_BTN = 4, SRC_TEST = 8 };
+
+void setKey(bool isSpace, uint8_t src, bool on, const char* origem) {
+  uint8_t&amp; m = isSpace ? spaceSrc : downSrc;
+  bool was = m != 0;
+  m = on ? (m | src) : (m &amp; ~src);
+  bool is = m != 0;
+  if (was == is) return;                 // outra fonte ja segurava a tecla
+  bool&amp; st = isSpace ? spaceDown : arrowDown;
+  unsigned long&amp; at = isSpace ? spaceAt : downAt;
+  st = is;
   unsigned long now = millis();
-  const char* st = sendKeys();
-  if (on) { spaceAt = now; LOG(&quot;  &gt;&gt; ESPACO apertado%s   [%s]\n&quot;, origem, st); }
-  else LOG(&quot;  &gt;&gt; ESPACO solto, ficou %lu ms   [%s]\n&quot;, now - spaceAt, st);
+  const char* res = sendKeys();
+  const char* nome = isSpace ? &quot;ESPACO&quot; : &quot;SETA BAIXO&quot;;
+  if (is) { at = now; LOG(&quot;  &gt;&gt; %s %s%s   [%s]\n&quot;, nome, isSpace ? &quot;apertado&quot; : &quot;apertada&quot;, origem, res); }
+  else LOG(&quot;  &gt;&gt; %s %s, ficou %lu ms   [%s]\n&quot;, nome, isSpace ? &quot;solto&quot; : &quot;solta&quot;, now - at, res);
 }
-void applyDown(bool on, const char* origem) {
-  if (arrowDown == on) return;
-  arrowDown = on;
-  unsigned long now = millis();
-  const char* st = sendKeys();
-  if (on) { downAt = now; LOG(&quot;  &gt;&gt; SETA BAIXO apertada%s   [%s]\n&quot;, origem, st); }
-  else LOG(&quot;  &gt;&gt; SETA BAIXO solta, ficou %lu ms   [%s]\n&quot;, now - downAt, st);
+void releaseAllKeys() {
+  if (spaceSrc) { spaceSrc = SRC_TEST; setKey(true, SRC_TEST, false, &quot;&quot;); }
+  if (downSrc) { downSrc = SRC_TEST; setKey(false, SRC_TEST, false, &quot;&quot;); }
 }
 // Chamadas pelo algoritmo (ignoradas durante o teste de teclas)
-void keySpace(bool on) { if (!keyTestT0) applySpace(on, &quot;&quot;); }
-void keyDown(bool on) { if (!keyTestT0) applyDown(on, &quot;&quot;); }
+void keySpace(bool on) { if (!keyTestT0) setKey(true, SRC_MOV, on, &quot;&quot;); }
+void keyDown(bool on) { if (!keyTestT0) setKey(false, SRC_MOV, on, &quot;&quot;); }
 
 // ---------------- Teste de teclas (comando &quot;teclas&quot;) ----------------
 struct TestStep { unsigned long at; bool space; bool on; };
@@ -934,7 +998,7 @@ int keyTestStep = 0, keyTestCount = -1;
 
 void keyTestStart() {
   if (calPhase != CAL_OFF || scActive) { Serial.println(&quot;Espere a calibracao terminar.&quot;); return; }
-  applySpace(false, &quot;&quot;); applyDown(false, &quot;&quot;);
+  releaseAllKeys();
   logMode = 1;
   keyTestT0 = millis(); if (!keyTestT0) keyTestT0 = 1;
   keyTestStep = 0; keyTestCount = -1;
@@ -953,7 +1017,7 @@ void keyTestTick() {
   }
   while (keyTestStep &lt; KEYTEST_N &amp;&amp; t &gt;= KEYTEST[keyTestStep].at) {
     const TestStep&amp; st = KEYTEST[keyTestStep++];
-    if (st.space) applySpace(st.on, &quot; (teste)&quot;); else applyDown(st.on, &quot; (teste)&quot;);
+    setKey(st.space, SRC_TEST, st.on, &quot; (teste)&quot;);
   }
   if (keyTestStep &gt;= KEYTEST_N) {
     keyTestT0 = 0;
@@ -1133,8 +1197,10 @@ void setup() {
   Serial.begin(115200);
   pinMode(PIN_LED, OUTPUT);
   pinMode(PIN_BOOT, INPUT_PULLUP);
+  pinMode(PIN_BTN_PULO, INPUT_PULLUP);    // sem botao ligado, o pino fica em 1: nada acontece
+  pinMode(PIN_BTN_BAIXO, INPUT_PULLUP);
   delay(300);
-  Serial.println(&quot;\n=== Controle do Pulo v3.1 ===&quot;);
+  Serial.println(&quot;\n=== Controle do Pulo v3.2 ===&quot;);
   loadParams();
   mpuInit();
   bleInit();
@@ -1144,8 +1210,6 @@ void setup() {
 
 void loop() {
   static uint32_t lastUs = 0;
-  static bool bootWas = false;
-  static unsigned long bootT = 0;
   static int lastKb = -1;
   static String line;
 
@@ -1158,10 +1222,19 @@ void loop() {
   int kb = kbState();                                    // avisa quando o Bluetooth muda
   if (kb != lastKb) { lastKb = kb; Serial.printf(&quot;Bluetooth: %s\n&quot;, kbText(kb)); }
 
-  bool boot = digitalRead(PIN_BOOT) == LOW;              // BOOT = Espaco (com anti-repique)
-  if (boot != bootWas &amp;&amp; millis() - bootT &gt; 30) {
-    bootWas = boot; bootT = millis();
-    if (!keyTestT0) applySpace(boot, &quot; (botao BOOT)&quot;);
+  // Botoes (com anti-repique de 30 ms): BOOT e botao 1 = ESPACO, botao 2 = SETA BAIXO
+  struct Btn { int pin; bool isSpace; uint8_t src; const char* nome; bool was; unsigned long t; };
+  static Btn btns[] = {
+    {PIN_BOOT, true, SRC_BOOT, &quot; (botao BOOT)&quot;, false, 0},
+    {PIN_BTN_PULO, true, SRC_BTN, &quot; (botao 1)&quot;, false, 0},
+    {PIN_BTN_BAIXO, false, SRC_BTN, &quot; (botao 2)&quot;, false, 0},
+  };
+  for (Btn&amp; b : btns) {
+    bool on = digitalRead(b.pin) == LOW;
+    if (on != b.was &amp;&amp; millis() - b.t &gt; 30) {
+      b.was = on; b.t = millis();
+      if (!keyTestT0) setKey(b.isSpace, b.src, on, b.nome);
+    }
   }
   keyTestTick();
 
@@ -1418,7 +1491,7 @@ document.querySelectorAll('button.copy').forEach(function(b){
     var t=document.createElementNS(ns,'text');t.setAttribute('x',anchorX);t.setAttribute('y',y+4);t.setAttribute('text-anchor',anchor);
     t.setAttribute('class',cls+(on?' on':''));t.textContent=label;g.appendChild(t);
   }
-  var right=['D23','D22','TXO','RXO','D21','D19','D18','D5','TX2','RX2','D4','D2','D15','GND','3V3'],used={D22:1,D21:1,GND:1,'3V3':1};
+  var right=['D23','D22','TXO','RXO','D21','D19','D18','D5','TX2','RX2','D4','D2','D15','GND','3V3'],used={D22:1,D21:1,GND:1,'3V3':1,D18:1,D19:1};
   var g=document.getElementById('pins');
   right.forEach(function(p,i){pin(g,205,50+i*26,p,used[p],'lbl',192,'end');});
   var gy=['INT','AD0','XCL','XDA','SDA','SCL','GND','VCC'],gu={SDA:1,SCL:1,GND:1,VCC:1},g2=document.getElementById('gypins');
